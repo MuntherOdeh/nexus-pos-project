@@ -2,9 +2,19 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production'
-);
+const JWT_SECRET: Uint8Array | null = (() => {
+  const jwtSecretValue = process.env.JWT_SECRET;
+
+  if (jwtSecretValue) {
+    return new TextEncoder().encode(jwtSecretValue);
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    return null;
+  }
+
+  return new TextEncoder().encode('your-super-secret-jwt-key-change-in-production');
+})();
 
 // Routes that require authentication
 const protectedRoutes = ['/admin', '/admin/dashboard', '/admin/contacts', '/admin/settings'];
@@ -23,7 +33,7 @@ export async function middleware(request: NextRequest) {
 
   // Verify token if exists
   let isValidToken = false;
-  if (token) {
+  if (token && JWT_SECRET) {
     try {
       await jwtVerify(token, JWT_SECRET);
       isValidToken = true;

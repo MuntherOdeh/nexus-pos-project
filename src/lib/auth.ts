@@ -1,9 +1,19 @@
 import { jwtVerify } from 'jose';
 import { prisma } from './prisma';
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production'
-);
+const JWT_SECRET: Uint8Array | null = (() => {
+  const jwtSecretValue = process.env.JWT_SECRET;
+
+  if (jwtSecretValue) {
+    return new TextEncoder().encode(jwtSecretValue);
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    return null;
+  }
+
+  return new TextEncoder().encode('your-super-secret-jwt-key-change-in-production');
+})();
 
 export interface AuthPayload {
   adminId: string;
@@ -13,6 +23,8 @@ export interface AuthPayload {
 
 export async function verifyAuth(token: string): Promise<AuthPayload | null> {
   try {
+    if (!JWT_SECRET) return null;
+
     // Verify JWT
     const { payload } = await jwtVerify(token, JWT_SECRET);
     

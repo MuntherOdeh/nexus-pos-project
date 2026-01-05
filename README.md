@@ -95,6 +95,23 @@ These endpoints are protected with `DEBUG_KEY`:
 - Build/run: `npm run build` then `npm run start`.
 - Rate limiting is in-memory (`src/lib/rate-limit.ts`); use a shared store (e.g. Redis) if you run multiple instances.
 
+## Deploy to Vercel
+
+1. Vercel Dashboard → **New Project** → import `MuntherOdeh/nexus-pos-project`
+2. Framework preset: **Next.js** (auto-detected)
+3. Add environment variables (Project → Settings → Environment Variables):
+   - `DATABASE_URL`
+   - `JWT_SECRET` (required for admin login)
+   - `NEXT_PUBLIC_APP_URL` (your production URL)
+   - Email (optional): `RESEND_API_KEY`, `RESEND_FROM`, `ADMIN_EMAIL_RECIPIENTS`
+   - Debug (optional): `DEBUG_KEY` (if not set, `/api/debug/*` returns 404)
+4. Deploy
+
+Database setup:
+
+- Run `npm run db:push` against your production database once (from your machine or CI).
+- Only run `npm run db:seed` if you understand what it creates (see `prisma/seed.ts`).
+
 ## Project structure
 
 - `src/app`: routes, pages, and API handlers (Next.js App Router)

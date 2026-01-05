@@ -7,7 +7,14 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const key = searchParams.get('key');
 
-  const debugKey = process.env.DEBUG_KEY || 'scopecode-debug-2024';
+  const debugKey = process.env.DEBUG_KEY;
+
+  if (!debugKey) {
+    return NextResponse.json(
+      { error: 'Not found' },
+      { status: 404 }
+    );
+  }
 
   if (key !== debugKey) {
     return NextResponse.json(

@@ -10,12 +10,20 @@ const limiter = rateLimit({
   uniqueTokenPerInterval: 500,
 });
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production'
-);
-
 export async function POST(request: NextRequest) {
   try {
+    const jwtSecretValue = process.env.JWT_SECRET;
+    if (!jwtSecretValue && process.env.NODE_ENV === 'production') {
+      return NextResponse.json(
+        { success: false, error: 'Server misconfigured: JWT_SECRET is not set' },
+        { status: 500 }
+      );
+    }
+
+    const JWT_SECRET = new TextEncoder().encode(
+      jwtSecretValue || 'your-super-secret-jwt-key-change-in-production'
+    );
+
     // Rate limiting - stricter for login
     const ip = request.headers.get('x-forwarded-for') || 
                request.headers.get('x-real-ip') || 

@@ -8,8 +8,25 @@ interface ContactEmailData {
   message: string;
 }
 
-// Initialize Resend client
-const resend = new Resend(process.env.RESEND_API_KEY);
+let cachedResendClient: Resend | null | undefined;
+
+const getResendClient = (): Resend | null => {
+  if (cachedResendClient !== undefined) return cachedResendClient;
+
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    cachedResendClient = null;
+    return cachedResendClient;
+  }
+
+  try {
+    cachedResendClient = new Resend(apiKey);
+  } catch {
+    cachedResendClient = null;
+  }
+
+  return cachedResendClient;
+};
 
 // Get admin recipients from environment or use defaults
 const getAdminRecipients = (): string[] => {
@@ -29,6 +46,12 @@ export async function sendContactNotification(data: ContactEmailData): Promise<b
   const startTime = Date.now();
 
   try {
+    const resendClient = getResendClient();
+    if (!resendClient) {
+      console.error('RESEND_API_KEY is not configured; skipping email send.');
+      return false;
+    }
+
     console.log('Starting email send process with Resend...');
 
     const recipients = getAdminRecipients();
@@ -38,7 +61,7 @@ export async function sendContactNotification(data: ContactEmailData): Promise<b
     console.log('From:', fromEmail);
 
     // Email to admin
-    const { data: adminResult, error: adminError } = await resend.emails.send({
+    const { data: adminResult, error: adminError } = await resendClient.emails.send({
       from: fromEmail,
       to: recipients,
       replyTo: data.email,
@@ -55,7 +78,7 @@ export async function sendContactNotification(data: ContactEmailData): Promise<b
     console.log('Admin email sent:', adminResult?.id);
 
     // Send confirmation email to the user
-    const { data: userResult, error: userError } = await resend.emails.send({
+    const { data: userResult, error: userError } = await resendClient.emails.send({
       from: fromEmail,
       to: [data.email],
       subject: `Thank you for contacting ScopeCode`,
