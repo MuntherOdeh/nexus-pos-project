@@ -62,3 +62,9 @@ logs
 .Spotlight-V100
 .Trashes
 ehthumbs.db
+
+# Windows device file names / accidental artifacts
+nul
+
+# Local example project (contains its own node_modules/.git)
+nexuspoint_project_example/
