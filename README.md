@@ -29,7 +29,7 @@ Marketing website + lightweight admin portal for **NexusPoint** (Smart POS Solut
 1. Install dependencies:
    - `npm install`
 2. Create local env file:
-   - Copy `.env.example` to `.env.local` and update values
+   - Copy `.env.example` to `.env` and update values
 3. Set up the database schema and seed an admin user:
    - `npm run db:push`
    - `npm run db:seed`
@@ -41,7 +41,7 @@ Marketing website + lightweight admin portal for **NexusPoint** (Smart POS Solut
 
 ## Environment variables
 
-Create `.env.local` (see `.env.example`).
+Create `.env` (see `.env.example`).
 
 Required:
 
