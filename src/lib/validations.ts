@@ -98,3 +98,43 @@ export const loginSchema = z.object({
 });
 
 export type LoginFormData = z.infer<typeof loginSchema>;
+
+/**
+ * Demo signup schema (creates a tenant + demo workspace)
+ */
+export const demoSignupSchema = z.object({
+  firstName: z
+    .string()
+    .min(1, "First name is required")
+    .max(50, "First name must be less than 50 characters"),
+  lastName: z
+    .string()
+    .min(1, "Last name is required")
+    .max(50, "Last name must be less than 50 characters"),
+  companyName: z
+    .string()
+    .min(2, "Company name must be at least 2 characters")
+    .max(120, "Company name must be less than 120 characters"),
+  email: z
+    .string()
+    .email("Please enter a valid email address")
+    .max(255, "Email must be less than 255 characters"),
+  phone: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val) return true;
+        const phoneRegex = /^[+()0-9\s-]{7,20}$/;
+        return phoneRegex.test(val);
+      },
+      { message: "Please enter a valid phone number" }
+    ),
+  country: z.string().min(2, "Country is required").max(56),
+  language: z.string().min(2, "Language is required").max(10),
+  companySize: z.enum(["S1_5", "S6_20", "S21_50", "S51_200", "S201_1000", "S1000_PLUS"]),
+  industry: z.enum(["RESTAURANT", "CAFE", "BAKERY", "RETAIL", "OTHER"]),
+  desiredSlug: z.string().optional(),
+});
+
+export type DemoSignupData = z.infer<typeof demoSignupSchema>;

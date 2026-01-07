@@ -175,7 +175,7 @@ export function HowItWorks() {
           className="text-center"
         >
           <div className="inline-flex flex-col sm:flex-row items-center gap-4">
-            <Link href="/contact">
+            <Link href="/signup">
               <Button size="lg" className="px-8">
                 Start Your Free Trial
                 <ArrowRight className="w-5 h-5" />

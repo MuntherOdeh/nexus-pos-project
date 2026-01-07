@@ -35,7 +35,7 @@ export function Footer() {
                   Get a free demo and see how NexusPoint can transform your operations.
                 </p>
               </div>
-              <Link href="/contact">
+              <Link href="/signup">
                 <Button
                   variant="secondary"
                   size="lg"

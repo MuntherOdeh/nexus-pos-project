@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Header, Footer } from "@/components/layout";
+import { headers } from "next/headers";
+import { SiteChrome } from "@/components/layout";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -80,6 +81,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const host = headers().get("host") || "";
+
   return (
     <html lang="en" className="scroll-smooth">
       <head>
@@ -89,9 +92,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <SiteChrome host={host}>{children}</SiteChrome>
       </body>
     </html>
   );

@@ -157,7 +157,7 @@ export function Hero() {
               transition={{ delay: 0.5 }}
               className="flex flex-wrap gap-4 mb-12"
             >
-              <Link href="/contact">
+              <Link href="/signup">
                 <Button size="lg" className="bg-primary-500 hover:bg-primary-600 text-white px-8 h-14 text-lg">
                   Start Free Trial
                   <ArrowRight className="w-5 h-5" />

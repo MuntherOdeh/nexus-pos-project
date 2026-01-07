@@ -274,7 +274,7 @@ export function Header() {
 
             {/* Desktop CTA */}
             <div className="hidden lg:flex items-center gap-4">
-              <Link href="/contact">
+              <Link href="/signup">
                 <Button size="md">
                   Get Demo
                   <ChevronRight className="w-4 h-4" />
@@ -453,7 +453,7 @@ export function Header() {
                       {COMPANY_INFO.email}
                     </a>
                   </div>
-                  <Link href="/contact" className="block">
+                  <Link href="/signup" className="block">
                     <Button className="w-full" size="lg">
                       Get Free Demo
                     </Button>

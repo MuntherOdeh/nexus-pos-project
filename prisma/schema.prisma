@@ -136,3 +136,268 @@ model AuditLog {
   @@index([adminId])
   @@index([createdAt])
 }
+
+// -----------------------------
+// POS SaaS (multi-tenant) models
+// -----------------------------
+
+model Tenant {
+  id             String       @id @default(cuid())
+  name           String
+  slug           String       @unique
+  country        String
+  language       String
+  companySize    CompanySize
+  industry       TenantIndustry
+  currency       String       @default("AED")
+  timezone       String       @default("Asia/Dubai")
+  theme          PosTheme     @default(EMERALD)
+
+  ownerFirstName String
+  ownerLastName  String
+  ownerEmail     String
+  ownerPhone     String?
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  users              TenantUser[]
+  products           Product[]
+  warehouses         Warehouse[]
+  stockItems         StockItem[]
+  invoices           Invoice[]
+  inventoryMovements InventoryMovement[]
+  paymentConnections PaymentConnection[]
+
+  @@index([slug])
+  @@index([ownerEmail])
+  @@index([industry])
+  @@index([createdAt])
+}
+
+enum CompanySize {
+  S1_5
+  S6_20
+  S21_50
+  S51_200
+  S201_1000
+  S1000_PLUS
+}
+
+enum TenantIndustry {
+  RESTAURANT
+  CAFE
+  BAKERY
+  RETAIL
+  OTHER
+}
+
+enum PosTheme {
+  EMERALD
+  MIDNIGHT
+  OCEAN
+  SUNSET
+  NEON
+  ROYAL
+}
+
+model TenantUser {
+  id        String         @id @default(cuid())
+  tenantId  String
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email     String
+  firstName String
+  lastName  String
+  phone     String?
+  role      TenantUserRole @default(OWNER)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([email])
+}
+
+enum TenantUserRole {
+  OWNER
+  ADMIN
+  MANAGER
+  STAFF
+}
+
+model Product {
+  id         String     @id @default(cuid())
+  tenantId   String
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name       String
+  sku        String?
+  priceCents Int        @default(0)
+  currency   String     @default("AED")
+  isActive   Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  stockItems                 StockItem[]
+  invoiceLines               InvoiceLine[]
+  inventoryMovementLineItems InventoryMovementLine[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([isActive])
+}
+
+model Warehouse {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  code      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stockItems         StockItem[]
+  inventoryMovements InventoryMovement[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model StockItem {
+  id           String    @id @default(cuid())
+  tenantId     String
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouseId  String
+  warehouse    Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  onHand       Int       @default(0)
+  reserved     Int       @default(0)
+  reorderPoint Int       @default(0)
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([warehouseId, productId])
+  @@index([tenantId])
+  @@index([productId])
+}
+
+model Invoice {
+  id           String        @id @default(cuid())
+  tenantId     String
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  number       String
+  status       InvoiceStatus @default(DRAFT)
+  customerName String
+  customerEmail String?
+  issuedAt     DateTime      @default(now())
+  dueAt        DateTime?
+  subtotalCents Int          @default(0)
+  taxCents     Int           @default(0)
+  totalCents   Int           @default(0)
+  currency     String        @default("AED")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  lines        InvoiceLine[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId])
+  @@index([status])
+  @@index([issuedAt])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  VOID
+  OVERDUE
+}
+
+model InvoiceLine {
+  id            String   @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId     String?
+  product       Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  description   String
+  quantity      Int      @default(1)
+  unitPriceCents Int     @default(0)
+  lineTotalCents Int     @default(0)
+
+  @@index([invoiceId])
+}
+
+model InventoryMovement {
+  id          String                 @id @default(cuid())
+  tenantId    String
+  tenant      Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouseId String
+  warehouse   Warehouse              @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  type        InventoryMovementType
+  status      InventoryMovementStatus @default(DRAFT)
+  reference   String
+  notes       String?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  lines       InventoryMovementLine[]
+
+  @@index([tenantId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum InventoryMovementType {
+  RECEIPT
+  DELIVERY
+  ADJUSTMENT
+  TRANSFER
+}
+
+enum InventoryMovementStatus {
+  DRAFT
+  POSTED
+  CANCELLED
+}
+
+model InventoryMovementLine {
+  id         String            @id @default(cuid())
+  movementId String
+  movement   InventoryMovement @relation(fields: [movementId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity   Int
+
+  @@index([movementId])
+  @@index([productId])
+}
+
+model PaymentConnection {
+  id             String                   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  provider       PaymentProvider
+  status         PaymentConnectionStatus  @default(DISCONNECTED)
+  displayName    String
+  lastConnectedAt DateTime?
+  metadata       Json?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  @@unique([tenantId, provider])
+  @@index([tenantId])
+  @@index([status])
+}
+
+enum PaymentProvider {
+  BANK
+  PAYPAL
+  CARD
+}
+
+enum PaymentConnectionStatus {
+  DISCONNECTED
+  PENDING
+  CONNECTED
+}
