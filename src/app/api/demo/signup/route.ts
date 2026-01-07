@@ -4,6 +4,8 @@ import { rateLimit } from "@/lib/rate-limit";
 import { demoSignupSchema } from "@/lib/validations";
 import { findAvailableTenantSlug } from "@/lib/tenants";
 import { seedDemoTenantData } from "@/lib/pos/demo-seed";
+import { signPosToken } from "@/lib/pos/jwt";
+import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +59,7 @@ export async function POST(request: NextRequest) {
       language,
       companySize,
       industry,
+      password,
       desiredSlug,
     } = validationResult.data;
 
@@ -96,15 +99,19 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    await prisma.tenantUser.create({
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    const tenantUser = await prisma.tenantUser.create({
       data: {
         tenantId: tenant.id,
         email: email.trim().toLowerCase(),
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phone: phone ? phone.trim() : null,
+        passwordHash,
         role: "OWNER",
       },
+      select: { id: true, role: true },
     });
 
     await seedDemoTenantData({
@@ -112,6 +119,26 @@ export async function POST(request: NextRequest) {
       tenantId: tenant.id,
       industry: tenant.industry,
       currency: tenant.currency,
+    });
+
+    const token = await signPosToken({
+      payload: {
+        tenantSlug: tenant.slug,
+        tenantUserId: tenantUser.id,
+        role: tenantUser.role,
+      },
+      expiresIn: "7d",
+    });
+
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await prisma.posSession.create({
+      data: {
+        tenantUserId: tenantUser.id,
+        token,
+        expiresAt,
+        ipAddress: ip,
+        userAgent: request.headers.get("user-agent") || "Unknown",
+      },
     });
 
     await prisma.auditLog.create({
@@ -130,7 +157,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         success: true,
         tenant,
@@ -140,6 +167,24 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
+
+    const rootDomain =
+      process.env.TENANT_ROOT_DOMAIN || process.env.NEXT_PUBLIC_TENANT_ROOT_DOMAIN;
+    const cookieDomain =
+      process.env.NODE_ENV === "production" && rootDomain && !rootDomain.includes("localhost")
+        ? `.${rootDomain}`
+        : undefined;
+
+    response.cookies.set("pos-auth-token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60,
+      path: "/",
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
+    });
+
+    return response;
   } catch (error) {
     console.error("Demo signup error:", error);
     return NextResponse.json(

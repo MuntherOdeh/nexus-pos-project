@@ -2,12 +2,15 @@
 
 import React, { createContext, useContext, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Boxes,
+  ChefHat,
   LayoutDashboard,
+  LogOut,
   Receipt,
   Settings,
+  ShoppingCart,
   Truck,
   Warehouse,
   Menu,
@@ -52,12 +55,15 @@ function isActivePath(pathname: string, href: string): boolean {
 
 export function PosShell({
   tenant,
+  user,
   children,
 }: {
   tenant: TenantShell;
+  user?: { id: string; email: string; firstName: string; lastName: string; role: string };
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const isPathBased = pathname.startsWith("/t/");
   const base = isPathBased ? `/t/${tenant.slug}/pos` : "";
   const marketingUrl = process.env.NEXT_PUBLIC_APP_URL || "/";
@@ -72,6 +78,8 @@ export function PosShell({
   const navItems = useMemo(
     () => [
       { href: isPathBased ? base : "/", label: "Dashboard", icon: LayoutDashboard },
+      { href: isPathBased ? `${base}/checkout` : "/checkout", label: "Checkout", icon: ShoppingCart },
+      { href: isPathBased ? `${base}/kds` : "/kds", label: "Kitchen (KDS)", icon: ChefHat },
       { href: isPathBased ? `${base}/invoices` : "/invoices", label: "Invoices", icon: Receipt },
       { href: isPathBased ? `${base}/inventory` : "/inventory", label: "Inventory", icon: Boxes },
       { href: isPathBased ? `${base}/logistics` : "/logistics", label: "Logistics", icon: Truck },
@@ -94,6 +102,18 @@ export function PosShell({
         // Ignore demo failures
       }
     });
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/pos/auth/logout", { method: "POST" });
+    } catch {
+      // Ignore
+    } finally {
+      const loginHref = isPathBased ? `/t/${tenant.slug}/pos/login` : "/login";
+      router.push(loginHref);
+      router.refresh();
+    }
   };
 
   return (
@@ -198,7 +218,7 @@ export function PosShell({
                     </option>
                   ))}
                 </select>
-                {isPending && <div className="mt-2 text-xs text-[var(--pos-muted)]">Saving…</div>}
+                {isPending && <div className="mt-2 text-xs text-[var(--pos-muted)]">Saving...</div>}
               </div>
             </div>
           </aside>
@@ -222,20 +242,42 @@ export function PosShell({
                 </div>
 
                 <div className="hidden sm:flex items-center gap-3">
-                <div
-                  className="px-3 py-2 rounded-2xl border bg-white/5 text-xs"
-                  style={{ borderColor: "var(--pos-border)" }}
-                >
-                  <span className="text-[var(--pos-muted)]">Business:</span>{" "}
-                  <span className="font-semibold">{industry}</span>
+                  <div
+                    className="px-3 py-2 rounded-2xl border bg-white/5 text-xs"
+                    style={{ borderColor: "var(--pos-border)" }}
+                  >
+                    <span className="text-[var(--pos-muted)]">Business:</span>{" "}
+                    <span className="font-semibold">{industry}</span>
+                  </div>
+
+                  {user && (
+                    <div
+                      className="px-3 py-2 rounded-2xl border bg-white/5 text-xs"
+                      style={{ borderColor: "var(--pos-border)" }}
+                    >
+                      <span className="text-[var(--pos-muted)]">User:</span>{" "}
+                      <span className="font-semibold">
+                        {user.firstName} {user.lastName}
+                      </span>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="px-3 py-2 rounded-2xl border border-[color:var(--pos-border)] bg-white/5 hover:bg-white/10 text-xs font-semibold inline-flex items-center gap-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Logout
+                  </button>
+
+                  <a
+                    href={marketingUrl}
+                    className="px-3 py-2 rounded-2xl border border-[color:var(--pos-border)] bg-white/5 hover:bg-white/10 text-xs font-semibold"
+                  >
+                    Back to website
+                  </a>
                 </div>
-                <a
-                  href={marketingUrl}
-                  className="px-3 py-2 rounded-2xl border border-[color:var(--pos-border)] bg-white/5 hover:bg-white/10 text-xs font-semibold"
-                >
-                  Back to website
-                </a>
-              </div>
             </div>
           </header>
 

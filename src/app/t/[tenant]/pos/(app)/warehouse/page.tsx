@@ -129,4 +129,3 @@ export default async function TenantWarehousePage({ params }: { params: { tenant
     </div>
   );
 }
-

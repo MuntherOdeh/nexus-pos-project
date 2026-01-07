@@ -134,6 +134,7 @@ export const demoSignupSchema = z.object({
   language: z.string().min(2, "Language is required").max(10),
   companySize: z.enum(["S1_5", "S6_20", "S21_50", "S51_200", "S201_1000", "S1000_PLUS"]),
   industry: z.enum(["RESTAURANT", "CAFE", "BAKERY", "RETAIL", "OTHER"]),
+  password: z.string().min(8, "Password must be at least 8 characters").max(128),
   desiredSlug: z.string().optional(),
 });
 

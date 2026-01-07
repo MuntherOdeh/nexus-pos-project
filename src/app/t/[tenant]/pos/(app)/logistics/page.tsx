@@ -40,4 +40,3 @@ export default async function TenantLogisticsPage({ params }: { params: { tenant
     />
   );
 }
-

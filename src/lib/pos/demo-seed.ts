@@ -62,6 +62,41 @@ function centsSum(...values: number[]): number {
   return values.reduce((sum, value) => sum + value, 0);
 }
 
+function inferCategoryName(industry: TenantIndustry, product: SeedProduct): string {
+  const name = product.name.toLowerCase();
+
+  switch (industry) {
+    case "RESTAURANT": {
+      if (name.includes("pizza")) return "Pizzas";
+      if (name.includes("juice") || name.includes("drink")) return "Drinks";
+      if (name.includes("dessert") || name.includes("cake")) return "Desserts";
+      if (name.includes("soup") || name.includes("salad")) return "Starters";
+      return "Mains";
+    }
+    case "CAFE": {
+      if (name.includes("espresso") || name.includes("latte") || name.includes("cappuccino")) return "Coffee";
+      if (name.includes("croissant") || name.includes("cheesecake") || name.includes("slice")) return "Pastries";
+      return "Other";
+    }
+    case "BAKERY": {
+      if (name.includes("cake")) return "Cakes";
+      if (name.includes("roll") || name.includes("muffin") || name.includes("croissant")) return "Pastries";
+      return "Bread";
+    }
+    case "RETAIL": {
+      if (name.includes("cable")) return "Cables";
+      if (name.includes("mouse") || name.includes("speaker") || name.includes("power")) return "Electronics";
+      return "Accessories";
+    }
+    default:
+      return "General";
+  }
+}
+
+function getPosTaxRate(): number {
+  return 0.05; // UAE VAT default for demo
+}
+
 export async function seedDemoTenantData(params: {
   prisma: PrismaClient;
   tenantId: string;
@@ -79,12 +114,31 @@ export async function seedDemoTenantData(params: {
   });
 
   const catalog = seedCatalog[industry] ?? seedCatalog.OTHER;
+
+  // Categories (used by POS menu + inventory grouping)
+  const categoryNames = Array.from(new Set(catalog.map((item) => inferCategoryName(industry, item))));
+  const categories = await Promise.all(
+    categoryNames.map((name, index) =>
+      prisma.productCategory.create({
+        data: {
+          tenantId,
+          name,
+          sortOrder: index * 10,
+          isActive: true,
+        },
+      })
+    )
+  );
+  const categoryIdByName = new Map(categories.map((c) => [c.name, c.id]));
+
   const createdProducts = [];
 
   for (const item of catalog) {
+    const categoryName = inferCategoryName(industry, item);
     const product = await prisma.product.create({
       data: {
         tenantId,
+        categoryId: categoryIdByName.get(categoryName),
         name: item.name,
         sku: item.sku,
         priceCents: item.priceCents,
@@ -94,6 +148,93 @@ export async function seedDemoTenantData(params: {
     });
     createdProducts.push({ ...product, seed: item });
   }
+
+  // Floors + tables (restaurant-style POS)
+  const floorMain = await prisma.posFloor.create({
+    data: {
+      tenantId,
+      name: "Main Floor",
+      sortOrder: 0,
+    },
+  });
+
+  const floorSecondary = await prisma.posFloor.create({
+    data: {
+      tenantId,
+      name: industry === "RETAIL" ? "Storefront" : "Terrace",
+      sortOrder: 10,
+    },
+  });
+
+  const mainTables =
+    industry === "RETAIL"
+      ? [
+          { name: "Counter 1", capacity: 1, x: 80, y: 80, width: 220, height: 120, shape: "RECT" as const },
+        ]
+      : Array.from({ length: 12 }, (_, idx) => {
+          const col = idx % 4;
+          const row = Math.floor(idx / 4);
+          const name = `T${idx + 1}`;
+          return {
+            name,
+            capacity: idx % 3 === 0 ? 6 : 4,
+            x: 70 + col * 180,
+            y: 70 + row * 150,
+            width: 150,
+            height: 110,
+            shape: idx % 2 === 0 ? ("ROUND" as const) : ("RECT" as const),
+          };
+        });
+
+  const secondaryTables =
+    industry === "RETAIL"
+      ? [
+          { name: "Counter 2", capacity: 1, x: 100, y: 120, width: 220, height: 120, shape: "RECT" as const },
+        ]
+      : Array.from({ length: 6 }, (_, idx) => {
+          const col = idx % 3;
+          const row = Math.floor(idx / 3);
+          const name = `P${idx + 1}`;
+          return {
+            name,
+            capacity: 4,
+            x: 90 + col * 200,
+            y: 90 + row * 170,
+            width: 160,
+            height: 120,
+            shape: "ROUND" as const,
+          };
+        });
+
+  await prisma.posTable.createMany({
+    data: mainTables.map((t) => ({
+      tenantId,
+      floorId: floorMain.id,
+      name: t.name,
+      capacity: t.capacity,
+      x: t.x,
+      y: t.y,
+      width: t.width,
+      height: t.height,
+      shape: t.shape,
+      isActive: true,
+    })),
+  });
+
+  await prisma.posTable.createMany({
+    data: secondaryTables.map((t) => ({
+      tenantId,
+      floorId: floorSecondary.id,
+      name: t.name,
+      capacity: t.capacity,
+      x: t.x,
+      y: t.y,
+      width: t.width,
+      height: t.height,
+      shape: t.shape,
+      isActive: true,
+    })),
+  });
 
   for (const product of createdProducts) {
     await prisma.stockItem.create({
@@ -130,6 +271,52 @@ export async function seedDemoTenantData(params: {
       },
     ],
   });
+
+  // Create a sample in-progress order for KDS/checkout demo
+  const demoTable = await prisma.posTable.findFirst({
+    where: { tenantId, floorId: floorMain.id, isActive: true },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+
+  if (demoTable) {
+    const orderItems = createdProducts
+      .slice(0, Math.min(3, createdProducts.length))
+      .map((p, idx) => ({
+        productId: p.id,
+        productName: p.name,
+        unitPriceCents: p.priceCents,
+        quantity: idx === 0 ? 2 : 1,
+        status: idx === 0 ? ("IN_PROGRESS" as const) : ("SENT" as const),
+      }));
+
+    const subtotalCents = orderItems.reduce((sum, item) => sum + item.unitPriceCents * item.quantity, 0);
+    const taxCents = Math.round(subtotalCents * getPosTaxRate());
+    const totalCents = centsSum(subtotalCents, taxCents);
+
+    await prisma.posOrder.create({
+      data: {
+        tenantId,
+        tableId: demoTable.id,
+        status: "IN_KITCHEN",
+        orderNumber: `POS-DEMO-${randomInt(1000, 9999)}`,
+        subtotalCents,
+        taxCents,
+        totalCents,
+        currency,
+        sentToKitchenAt: new Date(),
+        items: {
+          create: orderItems.map((i) => ({
+            productId: i.productId,
+            productName: i.productName,
+            unitPriceCents: i.unitPriceCents,
+            quantity: i.quantity,
+            status: i.status,
+          })),
+        },
+      },
+    });
+  }
 
   const movementTemplates: Array<{
     type: InventoryMovementType;
@@ -233,4 +420,3 @@ export async function seedDemoTenantData(params: {
     });
   }
 }
-

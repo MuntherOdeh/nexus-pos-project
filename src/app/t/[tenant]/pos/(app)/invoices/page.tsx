@@ -47,4 +47,3 @@ export default async function TenantInvoicesPage({ params }: { params: { tenant:
     />
   );
 }
-

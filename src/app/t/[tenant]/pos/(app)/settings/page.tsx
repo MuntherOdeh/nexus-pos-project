@@ -49,4 +49,3 @@ export default async function TenantSettingsPage({ params }: { params: { tenant:
     />
   );
 }
-

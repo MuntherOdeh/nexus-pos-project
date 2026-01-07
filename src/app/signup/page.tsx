@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Building2, Globe, Mail, Phone, Sparkles, User } from "lucide-react";
+import { ArrowRight, Building2, Globe, Lock, Mail, Phone, Sparkles, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Select } from "@/components/ui";
 import { getPublicTenantRootDomain, isValidTenantSlug, slugifyCompanyName } from "@/lib/tenant-slug";
@@ -43,7 +43,7 @@ const INDUSTRIES = [
   { value: "OTHER", label: "Other" },
 ];
 
-type FieldErrors = Partial<Record<keyof DemoSignupData, string>>;
+type FieldErrors = Partial<Record<keyof DemoSignupData | "confirmPassword", string>>;
 
 export default function SignupPage() {
   const router = useRouter();
@@ -53,6 +53,7 @@ export default function SignupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const [formData, setFormData] = useState<DemoSignupData>({
     firstName: "",
@@ -64,6 +65,7 @@ export default function SignupPage() {
     language: "en",
     companySize: "S1_5",
     industry: "RESTAURANT",
+    password: "",
     desiredSlug: "",
   });
 
@@ -113,10 +115,16 @@ export default function SignupPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name as keyof DemoSignupData]) {
-      setErrors((prev) => ({ ...prev, [name]: undefined }));
+    if (name === "confirmPassword") {
+      setConfirmPassword(value);
+      if (errors.confirmPassword) {
+        setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+      }
+      setSubmitError(null);
+      return;
     }
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
     setSubmitError(null);
   };
 
@@ -134,6 +142,13 @@ export default function SignupPage() {
     if (!formData.language) nextErrors.language = "Language is required";
     if (!formData.companySize) nextErrors.companySize = "Company size is required";
     if (!formData.industry) nextErrors.industry = "Business type is required";
+    if (!formData.password) nextErrors.password = "Password is required";
+    if (formData.password && formData.password.length < 8) {
+      nextErrors.password = "Password must be at least 8 characters";
+    }
+    if (formData.password && confirmPassword !== formData.password) {
+      nextErrors.confirmPassword = "Passwords do not match";
+    }
 
     if (!suggestedSlug || !isValidTenantSlug(suggestedSlug)) {
       nextErrors.companyName = "Please enter a company name that can generate a valid link";
@@ -348,6 +363,31 @@ export default function SignupPage() {
                       placeholder="+971 50 000 0000"
                       error={errors.phone}
                       leftIcon={<Phone className="w-4 h-4" />}
+                    />
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 gap-6">
+                    <Input
+                      label="Password"
+                      name="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="Create a secure password"
+                      error={errors.password as string | undefined}
+                      leftIcon={<Lock className="w-4 h-4" />}
+                      required
+                    />
+                    <Input
+                      label="Confirm password"
+                      name="confirmPassword"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={handleChange}
+                      placeholder="Re-enter your password"
+                      error={errors.confirmPassword as string | undefined}
+                      leftIcon={<Lock className="w-4 h-4" />}
+                      required
                     />
                   </div>
 

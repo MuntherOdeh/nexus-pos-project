@@ -162,9 +162,14 @@ model Tenant {
   updatedAt      DateTime     @updatedAt
 
   users              TenantUser[]
+  productCategories  ProductCategory[]
   products           Product[]
   warehouses         Warehouse[]
   stockItems         StockItem[]
+  posFloors          PosFloor[]
+  posTables          PosTable[]
+  posOrders          PosOrder[]
+  posPayments        PosPayment[]
   invoices           Invoice[]
   inventoryMovements InventoryMovement[]
   paymentConnections PaymentConnection[]
@@ -209,9 +214,15 @@ model TenantUser {
   firstName String
   lastName  String
   phone     String?
+  passwordHash String?
   role      TenantUserRole @default(OWNER)
+  isActive  Boolean        @default(true)
+  lastLoginAt DateTime?
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
+
+  posSessions PosSession[]
+  openedPosOrders PosOrder[] @relation("PosOrderOpenedBy")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -229,6 +240,8 @@ model Product {
   id         String     @id @default(cuid())
   tenantId   String
   tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  categoryId String?
+  category   ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   name       String
   sku        String?
   priceCents Int        @default(0)
@@ -240,10 +253,193 @@ model Product {
   stockItems                 StockItem[]
   invoiceLines               InvoiceLine[]
   inventoryMovementLineItems InventoryMovementLine[]
+  posOrderItems              PosOrderItem[]
 
   @@unique([tenantId, name])
   @@index([tenantId])
+  @@index([categoryId])
   @@index([isActive])
+}
+
+model ProductCategory {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products  Product[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([sortOrder])
+}
+
+model PosFloor {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tables    PosTable[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([sortOrder])
+}
+
+model PosTable {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  floorId   String
+  floor     PosFloor @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  name      String
+  capacity  Int      @default(4)
+  x         Float    @default(0)
+  y         Float    @default(0)
+  width     Float    @default(140)
+  height    Float    @default(110)
+  shape     PosTableShape @default(RECT)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders    PosOrder[]
+
+  @@unique([tenantId, floorId, name])
+  @@index([tenantId])
+  @@index([floorId])
+  @@index([isActive])
+}
+
+enum PosTableShape {
+  RECT
+  ROUND
+}
+
+model PosOrder {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tableId   String?
+  table     PosTable? @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  openedById String?
+  openedBy  TenantUser? @relation("PosOrderOpenedBy", fields: [openedById], references: [id], onDelete: SetNull)
+  status    PosOrderStatus @default(OPEN)
+  orderNumber String
+  notes     String?  @db.Text
+  subtotalCents Int  @default(0)
+  taxCents  Int      @default(0)
+  totalCents Int     @default(0)
+  currency  String   @default("AED")
+  openedAt  DateTime @default(now())
+  sentToKitchenAt DateTime?
+  closedAt  DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items     PosOrderItem[]
+  payments  PosPayment[]
+
+  @@unique([tenantId, orderNumber])
+  @@index([tenantId])
+  @@index([status])
+  @@index([tableId])
+  @@index([openedAt])
+}
+
+enum PosOrderStatus {
+  OPEN
+  IN_KITCHEN
+  READY
+  FOR_PAYMENT
+  PAID
+  CANCELLED
+}
+
+model PosOrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       PosOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productName String
+  unitPriceCents Int   @default(0)
+  quantity    Int      @default(1)
+  notes       String?  @db.Text
+  status      PosOrderItemStatus @default(NEW)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([status])
+}
+
+enum PosOrderItemStatus {
+  NEW
+  SENT
+  IN_PROGRESS
+  READY
+  SERVED
+  VOID
+}
+
+model PosPayment {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderId     String
+  order       PosOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider    PosPaymentProvider
+  status      PosPaymentStatus @default(PENDING)
+  amountCents Int
+  currency    String   @default("AED")
+  processorRef String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([orderId])
+  @@index([status])
+}
+
+enum PosPaymentProvider {
+  CASH
+  BANK
+  PAYPAL
+  CARD
+}
+
+enum PosPaymentStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+model PosSession {
+  id           String   @id @default(cuid())
+  token        String   @unique
+  tenantUserId String
+  tenantUser   TenantUser @relation(fields: [tenantUserId], references: [id], onDelete: Cascade)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  ipAddress    String?
+  userAgent    String?
+
+  @@index([tenantUserId])
+  @@index([token])
 }
 
 model Warehouse {

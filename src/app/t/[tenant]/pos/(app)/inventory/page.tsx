@@ -50,4 +50,3 @@ export default async function TenantInventoryPage({ params }: { params: { tenant
     />
   );
 }
-

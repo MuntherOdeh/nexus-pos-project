@@ -27,7 +27,30 @@ export function buildTenantHost(slug: string, rootDomain: string): string {
   return `${slug}.${rootDomain}`;
 }
 
+export function getTenantRootDomain(): string {
+  return process.env.TENANT_ROOT_DOMAIN || process.env.NEXT_PUBLIC_TENANT_ROOT_DOMAIN || "nexuspoint.com";
+}
+
 export function getPublicTenantRootDomain(): string {
   return process.env.NEXT_PUBLIC_TENANT_ROOT_DOMAIN || "nexuspoint.com";
 }
 
+export function getTenantSlugFromHost(host: string | null): string | null {
+  if (!host) return null;
+  const hostname = host.split(":")[0].toLowerCase();
+  const rootDomain = getTenantRootDomain().toLowerCase();
+
+  if (hostname === rootDomain || hostname === `www.${rootDomain}`) return null;
+
+  if (hostname.endsWith(`.${rootDomain}`)) {
+    const subdomain = hostname.slice(0, -1 * (`.${rootDomain}`.length));
+    if (isValidTenantSlug(subdomain)) return subdomain;
+  }
+
+  if (hostname.endsWith(".localhost")) {
+    const subdomain = hostname.slice(0, -".localhost".length);
+    if (isValidTenantSlug(subdomain)) return subdomain;
+  }
+
+  return null;
+}
