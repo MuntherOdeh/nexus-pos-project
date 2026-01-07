@@ -6,6 +6,8 @@ import { findAvailableTenantSlug } from "@/lib/tenants";
 import { seedDemoTenantData } from "@/lib/pos/demo-seed";
 import { signPosToken } from "@/lib/pos/jwt";
 import bcrypt from "bcryptjs";
+import { randomUUID } from "crypto";
+import { getCookieDomainForTenantRoot } from "@/lib/cookies";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +17,7 @@ const limiter = rateLimit({
 });
 
 export async function POST(request: NextRequest) {
+  const requestId = randomUUID();
   try {
     const ip =
       request.headers.get("x-forwarded-for") ||
@@ -168,12 +171,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
 
-    const rootDomain =
-      process.env.TENANT_ROOT_DOMAIN || process.env.NEXT_PUBLIC_TENANT_ROOT_DOMAIN;
-    const cookieDomain =
-      process.env.NODE_ENV === "production" && rootDomain && !rootDomain.includes("localhost")
-        ? `.${rootDomain}`
-        : undefined;
+    const cookieDomain = getCookieDomainForTenantRoot(request);
 
     response.cookies.set("pos-auth-token", token, {
       httpOnly: true,
@@ -186,9 +184,24 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error("Demo signup error:", error);
+    const message = error instanceof Error ? error.message : "";
+
+    const looksLikeDatabaseIssue =
+      message.includes("DATABASE_URL") ||
+      message.includes("Can't reach database server") ||
+      message.includes("P1001") ||
+      message.includes("P1008") ||
+      message.includes("ECONNREFUSED") ||
+      message.includes("ENOTFOUND") ||
+      message.includes("ETIMEDOUT");
+
+    const userFacingError = looksLikeDatabaseIssue
+      ? "Database connection failed. On Vercel you must use a hosted Postgres DATABASE_URL (localhost won't work)."
+      : "An error occurred. Please try again later.";
+
+    console.error(`[demo-signup:${requestId}]`, error);
     return NextResponse.json(
-      { success: false, error: "An error occurred. Please try again later." },
+      { success: false, error: userFacingError, requestId },
       { status: 500 }
     );
   }

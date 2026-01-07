@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 import { isValidTenantSlug } from "@/lib/tenant-slug";
 import { signPosToken } from "@/lib/pos/jwt";
+import { getCookieDomainForTenantRoot } from "@/lib/cookies";
 
 export const dynamic = "force-dynamic";
 
@@ -125,11 +126,7 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
 
-    const rootDomain = process.env.TENANT_ROOT_DOMAIN || process.env.NEXT_PUBLIC_TENANT_ROOT_DOMAIN;
-    const cookieDomain =
-      process.env.NODE_ENV === "production" && rootDomain && !rootDomain.includes("localhost")
-        ? `.${rootDomain}`
-        : undefined;
+    const cookieDomain = getCookieDomainForTenantRoot(request);
 
     response.cookies.set("pos-auth-token", token, {
       httpOnly: true,
@@ -149,4 +146,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

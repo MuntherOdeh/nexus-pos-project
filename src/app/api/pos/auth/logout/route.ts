@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getCookieDomainForTenantRoot } from "@/lib/cookies";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +14,7 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({ success: true }, { status: 200 });
 
-    const rootDomain = process.env.TENANT_ROOT_DOMAIN || process.env.NEXT_PUBLIC_TENANT_ROOT_DOMAIN;
-    const cookieDomain =
-      process.env.NODE_ENV === "production" && rootDomain && !rootDomain.includes("localhost")
-        ? `.${rootDomain}`
-        : undefined;
+    const cookieDomain = getCookieDomainForTenantRoot(request);
 
     response.cookies.set("pos-auth-token", "", {
       httpOnly: true,
@@ -37,4 +34,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
