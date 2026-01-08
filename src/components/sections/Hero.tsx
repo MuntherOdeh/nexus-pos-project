@@ -2,10 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
-  Sparkles,
   CheckCircle2,
   Store,
   Coffee,
@@ -13,14 +12,22 @@ import {
   Utensils,
   ChevronDown,
   Play,
+  TrendingUp,
+  DollarSign,
+  Clock,
+  Users,
+  Zap,
+  BarChart3,
+  Package,
+  CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui";
 
 const industries = [
-  { icon: Utensils, label: "Restaurants", color: "bg-orange-500" },
-  { icon: Coffee, label: "Cafes", color: "bg-amber-500" },
-  { icon: Store, label: "Retail", color: "bg-blue-500" },
-  { icon: ShoppingCart, label: "Supermarkets", color: "bg-emerald-500" },
+  { icon: Utensils, label: "Restaurants", color: "from-orange-500 to-red-500", stats: { sales: "AED 18,450", orders: "203", avg: "AED 90.89", tables: "18/24" } },
+  { icon: Coffee, label: "Cafes", color: "from-amber-500 to-orange-500", stats: { sales: "AED 8,230", orders: "312", avg: "AED 26.38", tables: "8/12" } },
+  { icon: Store, label: "Retail", color: "from-blue-500 to-indigo-500", stats: { sales: "AED 24,680", orders: "89", avg: "AED 277.30", tables: "N/A" } },
+  { icon: ShoppingCart, label: "Supermarkets", color: "from-emerald-500 to-teal-500", stats: { sales: "AED 45,120", orders: "567", avg: "AED 79.58", tables: "6/8" } },
 ];
 
 const highlights = [
@@ -29,9 +36,22 @@ const highlights = [
   "Cancel anytime",
 ];
 
+const quickActions = [
+  { label: "New Order", icon: CreditCard, color: "text-emerald-400" },
+  { label: "Tables", icon: Users, color: "text-blue-400" },
+  { label: "Menu", icon: Package, color: "text-amber-400" },
+  { label: "Reports", icon: BarChart3, color: "text-purple-400" },
+  { label: "Inventory", icon: Package, color: "text-pink-400" },
+  { label: "Settings", icon: Zap, color: "text-cyan-400" },
+];
+
 export function Hero() {
   const [isMounted, setIsMounted] = useState(false);
   const [activeIndustry, setActiveIndustry] = useState(0);
+  const [hoveredStat, setHoveredStat] = useState<number | null>(null);
+  const [hoveredAction, setHoveredAction] = useState<number | null>(null);
+  const [liveOrderCount, setLiveOrderCount] = useState(156);
+  const [showNotification, setShowNotification] = useState(true);
   const { scrollY } = useScroll();
 
   const backgroundY = useTransform(scrollY, [0, 500], [0, 150]);
@@ -44,9 +64,34 @@ export function Hero() {
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveIndustry((prev) => (prev + 1) % industries.length);
-    }, 3000);
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
+
+  // Simulate live order updates
+  useEffect(() => {
+    const orderInterval = setInterval(() => {
+      setLiveOrderCount((prev) => prev + Math.floor(Math.random() * 3));
+    }, 5000);
+    return () => clearInterval(orderInterval);
+  }, []);
+
+  // Toggle notification
+  useEffect(() => {
+    const notifInterval = setInterval(() => {
+      setShowNotification((prev) => !prev);
+    }, 6000);
+    return () => clearInterval(notifInterval);
+  }, []);
+
+  const currentIndustry = industries[activeIndustry];
+
+  const statsData = [
+    { label: "Today's Sales", value: currentIndustry.stats.sales, change: "+18%", icon: DollarSign, positive: true },
+    { label: "Orders", value: liveOrderCount.toString(), change: "+23", icon: TrendingUp, positive: true, live: true },
+    { label: "Avg. Order", value: currentIndustry.stats.avg, change: "+5%", icon: BarChart3, positive: true },
+    { label: "Active Tables", value: currentIndustry.stats.tables, change: "75%", icon: Clock, positive: true },
+  ];
 
   return (
     <section className="relative min-h-screen flex flex-col justify-center overflow-hidden bg-gradient-to-b from-neutral-950 via-neutral-900 to-neutral-950">
@@ -88,20 +133,6 @@ export function Hero() {
       {/* Main Content */}
       <div className="container-custom relative z-10 pt-20 pb-12">
         <div className="max-w-5xl mx-auto text-center">
-          {/* Top Badge */}
-          <motion.div
-            initial={isMounted ? { opacity: 0, y: 20 } : false}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-full text-sm mb-8"
-          >
-            <Sparkles className="w-4 h-4 text-primary-400" />
-            <span className="text-neutral-300">The Future of Point of Sale</span>
-            <span className="px-2 py-0.5 bg-primary-500/20 text-primary-400 text-xs font-medium rounded-full">
-              New
-            </span>
-          </motion.div>
-
           {/* Main Heading */}
           <motion.h1
             initial={isMounted ? { opacity: 0, y: 30 } : false}
@@ -163,19 +194,19 @@ export function Hero() {
             <Link href="/signup">
               <Button
                 size="lg"
-                className="bg-white text-neutral-900 hover:bg-neutral-100 px-8 h-14 text-lg font-semibold shadow-xl shadow-white/10 w-full sm:w-auto"
+                className="bg-white text-neutral-900 hover:bg-neutral-100 px-8 h-14 text-lg font-semibold shadow-xl shadow-white/10 w-full sm:w-auto group"
               >
                 Start Free Trial
-                <ArrowRight className="w-5 h-5" />
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
             <Link href="/services">
               <Button
                 variant="secondary"
                 size="lg"
-                className="bg-white/5 border-white/10 text-white hover:bg-white/10 px-8 h-14 text-lg w-full sm:w-auto"
+                className="bg-white/5 border-white/10 text-white hover:bg-white/10 px-8 h-14 text-lg w-full sm:w-auto group"
               >
-                <Play className="w-5 h-5" />
+                <Play className="w-5 h-5 group-hover:scale-110 transition-transform" />
                 Watch Demo
               </Button>
             </Link>
@@ -197,17 +228,20 @@ export function Hero() {
           </motion.div>
         </div>
 
-        {/* Industry Showcase */}
+        {/* Interactive Dashboard Preview */}
         <motion.div
           initial={isMounted ? { opacity: 0, y: 40 } : false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.5 }}
           className="mt-20"
         >
-          {/* Floating POS Interface Preview */}
           <div className="relative max-w-4xl mx-auto">
             {/* Main Card */}
-            <div className="relative bg-neutral-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
+            <motion.div
+              className="relative bg-neutral-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl"
+              whileHover={{ scale: 1.01 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
               {/* Decorative glow */}
               <div className="absolute -inset-1 bg-gradient-to-r from-primary-500/20 via-transparent to-secondary-500/20 rounded-3xl blur-xl opacity-50" />
 
@@ -215,32 +249,46 @@ export function Hero() {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-xl flex items-center justify-center">
-                      <Store className="w-6 h-6 text-white" />
-                    </div>
+                    <motion.div
+                      className={`w-12 h-12 bg-gradient-to-br ${currentIndustry.color} rounded-xl flex items-center justify-center`}
+                      key={activeIndustry}
+                      initial={{ scale: 0.8, rotate: -10 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: "spring", stiffness: 300 }}
+                    >
+                      <currentIndustry.icon className="w-6 h-6 text-white" />
+                    </motion.div>
                     <div>
                       <h3 className="text-white font-semibold text-lg">NexusPoint POS</h3>
-                      <p className="text-neutral-500 text-sm">Real-time Dashboard</p>
+                      <div className="flex items-center gap-2">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        <p className="text-neutral-500 text-sm">Real-time Dashboard</p>
+                      </div>
                     </div>
                   </div>
 
                   {/* Industry Tabs */}
-                  <div className="hidden md:flex items-center gap-2 bg-neutral-800/50 rounded-full p-1.5">
+                  <div className="hidden md:flex items-center gap-1 bg-neutral-800/50 rounded-full p-1.5">
                     {industries.map((industry, index) => {
                       const Icon = industry.icon;
                       return (
-                        <button
+                        <motion.button
                           key={industry.label}
                           onClick={() => setActiveIndustry(index)}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
                             activeIndustry === index
-                              ? "bg-white text-neutral-900"
-                              : "text-neutral-400 hover:text-white"
+                              ? "bg-white text-neutral-900 shadow-lg"
+                              : "text-neutral-400 hover:text-white hover:bg-white/5"
                           }`}
                         >
                           <Icon className="w-4 h-4" />
                           <span className="hidden lg:inline">{industry.label}</span>
-                        </button>
+                        </motion.button>
                       );
                     })}
                   </div>
@@ -248,62 +296,127 @@ export function Hero() {
 
                 {/* Stats Dashboard */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                  {[
-                    { label: "Today's Sales", value: "AED 12,450", change: "+18%", positive: true },
-                    { label: "Orders", value: "156", change: "+23", positive: true },
-                    { label: "Avg. Order", value: "AED 79.80", change: "+5%", positive: true },
-                    { label: "Active Tables", value: "12/20", change: "60%", positive: true },
-                  ].map((stat, index) => (
-                    <motion.div
-                      key={stat.label}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.6 + index * 0.1 }}
-                      className="bg-neutral-800/50 rounded-2xl p-4"
-                    >
-                      <p className="text-neutral-500 text-xs mb-1">{stat.label}</p>
-                      <p className="text-white text-xl font-bold">{stat.value}</p>
-                      <span className={`text-xs ${stat.positive ? "text-emerald-400" : "text-red-400"}`}>
-                        {stat.change}
-                      </span>
-                    </motion.div>
-                  ))}
+                  <AnimatePresence mode="wait">
+                    {statsData.map((stat, index) => {
+                      const Icon = stat.icon;
+                      return (
+                        <motion.div
+                          key={`${stat.label}-${activeIndustry}`}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ delay: index * 0.1 }}
+                          onMouseEnter={() => setHoveredStat(index)}
+                          onMouseLeave={() => setHoveredStat(null)}
+                          className={`bg-neutral-800/50 rounded-2xl p-4 cursor-pointer transition-all duration-300 border border-transparent ${
+                            hoveredStat === index ? "bg-neutral-800 border-primary-500/30 scale-105 shadow-lg shadow-primary-500/10" : ""
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-neutral-500 text-xs">{stat.label}</p>
+                            <Icon className={`w-4 h-4 ${hoveredStat === index ? "text-primary-400" : "text-neutral-600"} transition-colors`} />
+                          </div>
+                          <p className="text-white text-xl font-bold">{stat.value}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={`text-xs ${stat.positive ? "text-emerald-400" : "text-red-400"}`}>
+                              {stat.change}
+                            </span>
+                            {stat.live && (
+                              <span className="flex items-center gap-1 text-xs text-amber-400">
+                                <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse"></span>
+                                Live
+                              </span>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
                 </div>
 
                 {/* Quick Actions Bar */}
-                <div className="flex items-center gap-3 overflow-x-auto pb-2">
-                  {["New Order", "Tables", "Menu", "Reports", "Inventory", "Settings"].map((action, index) => (
-                    <motion.div
-                      key={action}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.8 + index * 0.05 }}
-                      className="flex-shrink-0 px-5 py-3 bg-neutral-800/80 hover:bg-neutral-700/80 border border-white/5 rounded-xl text-sm text-neutral-300 hover:text-white cursor-pointer transition-colors"
-                    >
-                      {action}
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Floating notification cards */}
-            <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute -top-6 -right-6 bg-neutral-900 border border-white/10 rounded-2xl p-4 shadow-xl hidden md:block"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <p className="text-white text-sm font-medium">Payment Received</p>
-                  <p className="text-emerald-400 text-xs">+AED 234.00</p>
+                <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                  {quickActions.map((action, index) => {
+                    const Icon = action.icon;
+                    return (
+                      <motion.div
+                        key={action.label}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.8 + index * 0.05 }}
+                        onMouseEnter={() => setHoveredAction(index)}
+                        onMouseLeave={() => setHoveredAction(null)}
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
+                        className={`flex-shrink-0 flex items-center gap-2 px-5 py-3 bg-neutral-800/80 hover:bg-neutral-700/80 border border-white/5 rounded-xl text-sm cursor-pointer transition-all duration-300 ${
+                          hoveredAction === index ? "border-primary-500/30 shadow-lg shadow-primary-500/5" : ""
+                        }`}
+                      >
+                        <Icon className={`w-4 h-4 ${action.color} ${hoveredAction === index ? "scale-110" : ""} transition-transform`} />
+                        <span className={`${hoveredAction === index ? "text-white" : "text-neutral-300"} transition-colors`}>
+                          {action.label}
+                        </span>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               </div>
             </motion.div>
 
+            {/* Floating notification cards */}
+            <AnimatePresence>
+              {showNotification && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: [0, -10, 0] }}
+                  exit={{ opacity: 0, scale: 0.8, y: -20 }}
+                  transition={{
+                    y: { duration: 4, repeat: Infinity, ease: "easeInOut" },
+                    opacity: { duration: 0.3 },
+                    scale: { duration: 0.3 }
+                  }}
+                  className="absolute -top-6 -right-6 bg-neutral-900 border border-white/10 rounded-2xl p-4 shadow-xl hidden md:block cursor-pointer hover:scale-105 transition-transform"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-white text-sm font-medium">Payment Received</p>
+                      <p className="text-emerald-400 text-xs">+AED 234.00</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+              {!showNotification && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8, y: -20 }}
+                  animate={{ opacity: 1, scale: 1, y: [0, 10, 0] }}
+                  exit={{ opacity: 0, scale: 0.8, y: 20 }}
+                  transition={{
+                    y: { duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 },
+                    opacity: { duration: 0.3 },
+                    scale: { duration: 0.3 }
+                  }}
+                  className="absolute -bottom-4 -left-4 bg-neutral-900 border border-white/10 rounded-2xl p-4 shadow-xl hidden md:block cursor-pointer hover:scale-105 transition-transform"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center">
+                      <Utensils className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-white text-sm font-medium">Order #2847</p>
+                      <p className="text-amber-400 text-xs">Ready for pickup</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Static notification on opposite side */}
             <motion.div
               animate={{ y: [0, 10, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
