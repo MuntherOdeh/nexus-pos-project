@@ -12,3 +12,5 @@ export type { SelectProps, SelectOption } from "./Select";
 
 export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "./Card";
 export type { CardProps } from "./Card";
+
+export { Logo } from "./Logo";

@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { Phone, Mail, MapPin, ArrowRight } from "lucide-react";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, Logo } from "@/components/ui";
 import { COMPANY_INFO, NAV_ITEMS, SERVICE_CATEGORIES } from "@/lib/constants";
 
 export function Footer() {
@@ -55,14 +55,9 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
           {/* Company Info */}
           <div className="lg:col-span-1">
-            <Link href="/" className="inline-flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-xl">N</span>
-              </div>
-              <span className="text-xl font-bold text-white">
-                Nexus<span className="text-primary-400">Point</span>
-              </span>
-            </Link>
+            <div className="mb-6">
+              <Logo variant="light" size="md" />
+            </div>
             <p className="text-neutral-400 mb-6 leading-relaxed">
               Smart POS solutions for restaurants, cafes, and retail shops.
               Streamline your operations and grow your business with NexusPoint.

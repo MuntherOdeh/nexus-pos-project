@@ -1,0 +1,38 @@
+<svg width="180" height="44" viewBox="0 0 180 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- NexusPoint Logo - Professional Rounded Badge with NP -->
+  <defs>
+    <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669"/>
+      <stop offset="50%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#14b8a6"/>
+    </linearGradient>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#14b8a6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Icon: Modern rounded square badge -->
+  <rect x="2" y="2" width="40" height="40" rx="12" fill="url(#badgeGrad)"/>
+
+  <!-- N letterform - modern geometric -->
+  <path
+    d="M12 32V12L22 26V12"
+    stroke="#ffffff"
+    stroke-width="3.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+
+  <!-- P dot/point - positioned elegantly -->
+  <circle cx="32" cy="32" r="4" fill="#ffffff"/>
+
+  <!-- Subtle inner glow -->
+  <rect x="2" y="2" width="40" height="40" rx="12" fill="url(#badgeGrad)" opacity="0"/>
+
+  <!-- Text: NexusPoint -->
+  <text x="52" y="28" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="20" font-weight="700" letter-spacing="-0.5">
+    <tspan fill="url(#textGrad)">Nexus</tspan><tspan fill="#ffffff">Point</tspan>
+  </text>
+</svg>

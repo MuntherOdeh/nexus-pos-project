@@ -20,7 +20,7 @@ import {
   Cloud
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui";
+import { Button, Logo } from "@/components/ui";
 import { NAV_ITEMS, COMPANY_INFO, SERVICE_CATEGORIES } from "@/lib/constants";
 
 // Icon mapping for services
@@ -126,14 +126,7 @@ export function Header() {
         <div className="container-custom">
           <nav className="flex items-center justify-between h-20">
             {/* Logo */}
-            <Link href="/" className="flex-shrink-0 flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-xl">N</span>
-              </div>
-              <span className="text-2xl font-bold text-neutral-900">
-                Nexus<span className="text-primary-600">Point</span>
-              </span>
-            </Link>
+            <Logo variant="dark" size="md" />
 
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center gap-8">
@@ -322,14 +315,7 @@ export function Header() {
               <div className="flex flex-col h-full">
                 {/* Menu Header */}
                 <div className="flex items-center justify-between p-4 border-b border-neutral-100">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center">
-                      <span className="text-white font-bold text-lg">N</span>
-                    </div>
-                    <span className="text-xl font-bold text-neutral-900">
-                      Nexus<span className="text-primary-600">Point</span>
-                    </span>
-                  </div>
+                  <Logo variant="dark" size="sm" href={undefined} />
                   <button
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="p-2 rounded-xl hover:bg-neutral-100 transition-colors"
