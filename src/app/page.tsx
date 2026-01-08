@@ -1,4 +1,4 @@
-import { Hero, Features, Services, HowItWorks, WhyChooseUs, About, Clients } from "@/components/sections";
+import { Hero, Features, Services, HowItWorks, WhyChooseUs, Testimonials, Pricing } from "@/components/sections";
 
 export default function HomePage() {
   return (
@@ -6,10 +6,10 @@ export default function HomePage() {
       <Hero />
       <Features />
       <Services />
+      <Pricing />
+      <Testimonials />
       <HowItWorks />
       <WhyChooseUs />
-      <About />
-      <Clients />
     </>
   );
 }

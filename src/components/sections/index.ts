@@ -6,3 +6,5 @@ export { About } from "./About";
 export { ContactForm } from "./ContactForm";
 export { Features } from "./Features";
 export { HowItWorks } from "./HowItWorks";
+export { Testimonials } from "./Testimonials";
+export { Pricing } from "./Pricing";
