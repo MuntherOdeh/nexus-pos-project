@@ -36,8 +36,8 @@ const getAdminRecipients = (): string[] => {
   }
   // Default recipients - add your personal email here that works with Resend
   return [
-    'abdullah.alali@scopecode.ae',
-    'sales@scopecode.ae',
+    'abdullah.alali@nexuspoint.ae',
+    'sales@nexuspoint.ae',
   ];
 };
 
@@ -55,7 +55,7 @@ export async function sendContactNotification(data: ContactEmailData): Promise<b
     console.log('Starting email send process with Resend...');
 
     const recipients = getAdminRecipients();
-    const fromEmail = process.env.RESEND_FROM || 'ScopeCode <noreply@scopecode.ae>';
+    const fromEmail = process.env.RESEND_FROM || 'NexusPoint <noreply@nexuspoint.ae>';
 
     console.log('Sending to:', recipients.join(', '));
     console.log('From:', fromEmail);
@@ -81,7 +81,7 @@ export async function sendContactNotification(data: ContactEmailData): Promise<b
     const { data: userResult, error: userError } = await resendClient.emails.send({
       from: fromEmail,
       to: [data.email],
-      subject: `Thank you for contacting ScopeCode`,
+      subject: `Thank you for contacting NexusPoint`,
       html: getUserEmailHtml(data),
       text: getUserEmailText(data),
     });
@@ -172,7 +172,7 @@ function getAdminEmailHtml(data: ContactEmailData): string {
               <tr>
                 <td style="padding: 40px 30px;">
                   <p style="color: #52525b; font-size: 16px; margin: 0 0 25px 0;">
-                    You have received a new message from the ScopeCode website contact form.
+                    You have received a new message from the NexusPoint website contact form.
                   </p>
                   <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
                     <tr>
@@ -225,10 +225,10 @@ function getAdminEmailHtml(data: ContactEmailData): string {
               <tr>
                 <td style="background-color: #f8fafc; padding: 25px 30px; text-align: center; border-top: 1px solid #e2e8f0;">
                   <p style="color: #71717a; font-size: 14px; margin: 0;">
-                    This email was sent from the ScopeCode website contact form.
+                    This email was sent from the NexusPoint website contact form.
                   </p>
                   <p style="color: #a1a1aa; font-size: 12px; margin: 10px 0 0 0;">
-                    &copy; ${new Date().getFullYear()} ScopeCode. All rights reserved.
+                    &copy; ${new Date().getFullYear()} NexusPoint. All rights reserved.
                   </p>
                 </td>
               </tr>
@@ -256,7 +256,7 @@ Message:
 ${data.message}
 
 ---
-This email was sent from the ScopeCode website contact form.
+This email was sent from the NexusPoint website contact form.
   `.trim();
 }
 
@@ -288,7 +288,7 @@ function getUserEmailHtml(data: ContactEmailData): string {
                     Dear ${escapeHtml(data.name)},
                   </p>
                   <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-                    Thank you for reaching out to ScopeCode. We have received your message and our team will review it shortly.
+                    Thank you for reaching out to NexusPoint. We have received your message and our team will review it shortly.
                   </p>
                   <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
                     We typically respond within <strong>24 hours</strong> during business days. If your inquiry is urgent, please feel free to call us directly.
@@ -302,7 +302,7 @@ function getUserEmailHtml(data: ContactEmailData): string {
                       <td>
                         <p style="color: #18181b; font-size: 16px; font-weight: 600; margin: 0 0 15px 0;">Need immediate assistance?</p>
                         <p style="color: #52525b; font-size: 14px; margin: 0 0 8px 0;">
-                          Email: <a href="mailto:sales@scopecode.ae" style="color: #0066cc; text-decoration: none;">sales@scopecode.ae</a>
+                          Email: <a href="mailto:sales@nexuspoint.ae" style="color: #0066cc; text-decoration: none;">sales@nexuspoint.ae</a>
                         </p>
                         <p style="color: #52525b; font-size: 14px; margin: 0;">
                           Phone: <a href="tel:+971567814747" style="color: #0066cc; text-decoration: none;">+971 56 781 4747</a>
@@ -316,10 +316,10 @@ function getUserEmailHtml(data: ContactEmailData): string {
                 <td style="background-color: #f8fafc; padding: 25px 30px; text-align: center; border-top: 1px solid #e2e8f0;">
                   <p style="color: #71717a; font-size: 14px; margin: 0 0 10px 0;">
                     Best regards,<br>
-                    <strong style="color: #18181b;">The ScopeCode Team</strong>
+                    <strong style="color: #18181b;">The NexusPoint Team</strong>
                   </p>
                   <p style="color: #a1a1aa; font-size: 12px; margin: 10px 0 0 0;">
-                    &copy; ${new Date().getFullYear()} ScopeCode. All rights reserved.
+                    &copy; ${new Date().getFullYear()} NexusPoint. All rights reserved.
                   </p>
                 </td>
               </tr>
@@ -337,7 +337,7 @@ function getUserEmailText(data: ContactEmailData): string {
   return `
 Dear ${data.name},
 
-Thank you for reaching out to ScopeCode. We have received your message and our team will review it shortly.
+Thank you for reaching out to NexusPoint. We have received your message and our team will review it shortly.
 
 We typically respond within 24 hours during business days.
 
@@ -345,13 +345,13 @@ Your Message Summary:
 Subject: ${data.subject}
 
 Need immediate assistance?
-Email: sales@scopecode.ae
+Email: sales@nexuspoint.ae
 Phone: +971 56 781 4747
 
 Best regards,
-The ScopeCode Team
+The NexusPoint Team
 
-© ${new Date().getFullYear()} ScopeCode. All rights reserved.
+© ${new Date().getFullYear()} NexusPoint. All rights reserved.
   `.trim();
 }
 

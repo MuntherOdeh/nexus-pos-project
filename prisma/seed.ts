@@ -7,13 +7,13 @@ async function main() {
   console.log('🌱 Starting database seed...');
 
   // Create default admin user
-  const adminPassword = await bcrypt.hash('ScopeCode@Admin2024!', 12);
-  
+  const adminPassword = await bcrypt.hash('NexusPoint@Admin2026!', 12);
+
   const admin = await prisma.admin.upsert({
-    where: { email: 'admin@scopecode.ae' },
+    where: { email: 'admin@nexuspoint.ae' },
     update: {},
     create: {
-      email: 'admin@scopecode.ae',
+      email: 'admin@nexuspoint.ae',
       passwordHash: adminPassword,
       name: 'Admin',
       role: 'SUPER_ADMIN',
@@ -32,7 +32,7 @@ async function main() {
       name: 'Test User',
       email: 'test@example.com',
       phone: '+971551234567',
-      subject: 'Web Development Inquiry',
+      subject: 'POS System Inquiry',
       message: 'This is a sample contact form submission for testing purposes.',
       status: 'NEW',
     },
@@ -44,8 +44,8 @@ async function main() {
   console.log('🎉 Database seeded successfully!');
   console.log('');
   console.log('📝 Admin Login Credentials:');
-  console.log('   Email: admin@scopecode.ae');
-  console.log('   Password: ScopeCode@Admin2024!');
+  console.log('   Email: admin@nexuspoint.ae');
+  console.log('   Password: NexusPoint@Admin2026!');
   console.log('');
   console.log('⚠️  IMPORTANT: Change the admin password after first login!');
 }

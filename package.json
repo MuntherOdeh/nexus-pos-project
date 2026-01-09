@@ -1,7 +1,7 @@
 {
-  "name": "scopecode-website",
+  "name": "nexuspoint-pos",
   "version": "1.0.0",
-  "description": "Professional IT Solutions Website for ScopeCode",
+  "description": "NexusPoint - Modern Point of Sale System",
   "private": true,
   "scripts": {
     "dev": "next dev",

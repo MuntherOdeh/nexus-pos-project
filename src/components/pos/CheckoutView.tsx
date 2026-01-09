@@ -45,6 +45,44 @@ import {
   CircleDollarSign,
   ArrowLeft,
   Zap,
+  // Product Icons
+  Pizza,
+  Sandwich,
+  Soup,
+  Salad,
+  IceCream,
+  Cake,
+  Cookie,
+  Croissant,
+  Beer,
+  Wine,
+  Milk,
+  Apple,
+  Beef,
+  Fish,
+  Egg,
+  Candy,
+  Popcorn,
+  Citrus,
+  Cherry,
+  Grape,
+  Carrot,
+  Wheat,
+  CupSoda,
+  GlassWater,
+  Martini,
+  Drumstick,
+  Utensils,
+  ChefHat,
+  Flame,
+  Snowflake,
+  Leaf,
+  Sparkles,
+  Crown,
+  Gem,
+  CircleDot,
+  Box,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/pos/format";
@@ -200,6 +238,108 @@ const CATEGORY_COLORS = [
 const CATEGORY_ICONS = [
   UtensilsCrossed, Coffee, ShoppingBag, Package, Gift, Star, Heart, Layers,
 ];
+
+// Product Icons for different categories
+type ProductIconItem = {
+  name: string;
+  icon: LucideIcon;
+  category: "food" | "drinks" | "bakery" | "desserts" | "other";
+};
+
+const PRODUCT_ICONS: ProductIconItem[] = [
+  // Food
+  { name: "Pizza", icon: Pizza, category: "food" },
+  { name: "Sandwich", icon: Sandwich, category: "food" },
+  { name: "Soup", icon: Soup, category: "food" },
+  { name: "Salad", icon: Salad, category: "food" },
+  { name: "Beef", icon: Beef, category: "food" },
+  { name: "Fish", icon: Fish, category: "food" },
+  { name: "Drumstick", icon: Drumstick, category: "food" },
+  { name: "Egg", icon: Egg, category: "food" },
+  { name: "Carrot", icon: Carrot, category: "food" },
+  { name: "Utensils", icon: Utensils, category: "food" },
+  { name: "ChefHat", icon: ChefHat, category: "food" },
+  { name: "Flame", icon: Flame, category: "food" },
+
+  // Drinks
+  { name: "Coffee", icon: Coffee, category: "drinks" },
+  { name: "Beer", icon: Beer, category: "drinks" },
+  { name: "Wine", icon: Wine, category: "drinks" },
+  { name: "Milk", icon: Milk, category: "drinks" },
+  { name: "CupSoda", icon: CupSoda, category: "drinks" },
+  { name: "GlassWater", icon: GlassWater, category: "drinks" },
+  { name: "Martini", icon: Martini, category: "drinks" },
+
+  // Bakery
+  { name: "Croissant", icon: Croissant, category: "bakery" },
+  { name: "Cookie", icon: Cookie, category: "bakery" },
+  { name: "Wheat", icon: Wheat, category: "bakery" },
+
+  // Desserts & Fruits
+  { name: "Cake", icon: Cake, category: "desserts" },
+  { name: "IceCream", icon: IceCream, category: "desserts" },
+  { name: "Candy", icon: Candy, category: "desserts" },
+  { name: "Apple", icon: Apple, category: "desserts" },
+  { name: "Cherry", icon: Cherry, category: "desserts" },
+  { name: "Grape", icon: Grape, category: "desserts" },
+  { name: "Citrus", icon: Citrus, category: "desserts" },
+  { name: "Popcorn", icon: Popcorn, category: "desserts" },
+
+  // Other
+  { name: "Box", icon: Box, category: "other" },
+  { name: "Package", icon: Package, category: "other" },
+  { name: "Leaf", icon: Leaf, category: "other" },
+  { name: "Snowflake", icon: Snowflake, category: "other" },
+  { name: "Sparkles", icon: Sparkles, category: "other" },
+  { name: "Crown", icon: Crown, category: "other" },
+  { name: "Gem", icon: Gem, category: "other" },
+  { name: "Star", icon: Star, category: "other" },
+  { name: "CircleDot", icon: CircleDot, category: "other" },
+];
+
+// Get icon for a product based on name matching or explicit icon name
+function getProductIcon(productName: string, explicitIcon?: string): LucideIcon | null {
+  // If explicit icon is set, use that
+  if (explicitIcon) {
+    const found = PRODUCT_ICONS.find((i) => i.name === explicitIcon);
+    if (found) return found.icon;
+  }
+
+  // Try to auto-detect from product name
+  const nameLower = productName.toLowerCase();
+
+  // Check for keywords
+  if (nameLower.includes("pizza")) return Pizza;
+  if (nameLower.includes("sandwich") || nameLower.includes("burger")) return Sandwich;
+  if (nameLower.includes("soup")) return Soup;
+  if (nameLower.includes("salad")) return Salad;
+  if (nameLower.includes("steak") || nameLower.includes("beef")) return Beef;
+  if (nameLower.includes("fish") || nameLower.includes("salmon") || nameLower.includes("seafood")) return Fish;
+  if (nameLower.includes("chicken") || nameLower.includes("wing")) return Drumstick;
+  if (nameLower.includes("egg") || nameLower.includes("omelette")) return Egg;
+  if (nameLower.includes("coffee") || nameLower.includes("espresso") || nameLower.includes("latte") || nameLower.includes("cappuccino")) return Coffee;
+  if (nameLower.includes("beer") || nameLower.includes("ale")) return Beer;
+  if (nameLower.includes("wine")) return Wine;
+  if (nameLower.includes("milk") || nameLower.includes("shake")) return Milk;
+  if (nameLower.includes("soda") || nameLower.includes("cola") || nameLower.includes("juice")) return CupSoda;
+  if (nameLower.includes("water")) return GlassWater;
+  if (nameLower.includes("cocktail") || nameLower.includes("martini")) return Martini;
+  if (nameLower.includes("croissant") || nameLower.includes("pastry")) return Croissant;
+  if (nameLower.includes("cookie") || nameLower.includes("biscuit")) return Cookie;
+  if (nameLower.includes("bread") || nameLower.includes("roll")) return Wheat;
+  if (nameLower.includes("cake") || nameLower.includes("cheesecake")) return Cake;
+  if (nameLower.includes("ice cream") || nameLower.includes("gelato") || nameLower.includes("sorbet")) return IceCream;
+  if (nameLower.includes("candy") || nameLower.includes("chocolate") || nameLower.includes("sweet")) return Candy;
+  if (nameLower.includes("apple")) return Apple;
+  if (nameLower.includes("orange") || nameLower.includes("lemon") || nameLower.includes("lime")) return Citrus;
+  if (nameLower.includes("popcorn")) return Popcorn;
+  if (nameLower.includes("vegan") || nameLower.includes("veggie") || nameLower.includes("vegetarian")) return Leaf;
+  if (nameLower.includes("cold") || nameLower.includes("frozen") || nameLower.includes("iced")) return Snowflake;
+  if (nameLower.includes("special") || nameLower.includes("premium")) return Crown;
+  if (nameLower.includes("hot") || nameLower.includes("spicy") || nameLower.includes("grill")) return Flame;
+
+  return null;
+}
 
 function getCategoryColor(index: number) {
   return CATEGORY_COLORS[index % CATEGORY_COLORS.length];
@@ -360,6 +500,140 @@ function QuickAmountButtons({
 }
 
 // ============================================================================
+// ICON SELECTOR COMPONENT
+// ============================================================================
+
+const ICON_CATEGORIES = [
+  { key: "food" as const, label: "Food", color: "bg-orange-500" },
+  { key: "drinks" as const, label: "Drinks", color: "bg-blue-500" },
+  { key: "bakery" as const, label: "Bakery", color: "bg-amber-500" },
+  { key: "desserts" as const, label: "Desserts", color: "bg-pink-500" },
+  { key: "other" as const, label: "Other", color: "bg-gray-500" },
+];
+
+function IconSelector({
+  selectedIcon,
+  onSelect,
+}: {
+  selectedIcon: string | null;
+  onSelect: (iconName: string | null) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<"food" | "drinks" | "bakery" | "desserts" | "other">("food");
+
+  const SelectedIconComponent = selectedIcon
+    ? PRODUCT_ICONS.find((i) => i.name === selectedIcon)?.icon
+    : null;
+
+  const filteredIcons = PRODUCT_ICONS.filter((i) => i.category === activeCategory);
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-sm font-medium text-[var(--pos-muted)]">
+        Item Icon (Optional)
+      </label>
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className={cn(
+            "w-full px-4 py-3 rounded-xl border bg-[var(--pos-bg)] focus:outline-none focus:ring-2 focus:ring-primary-500 flex items-center gap-3 transition-colors",
+            isOpen ? "border-primary-500" : "border-[color:var(--pos-border)]"
+          )}
+        >
+          {SelectedIconComponent ? (
+            <>
+              <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center">
+                <SelectedIconComponent className="w-5 h-5 text-primary-500" />
+              </div>
+              <span className="font-medium">{selectedIcon}</span>
+            </>
+          ) : (
+            <>
+              <div className="w-10 h-10 rounded-xl bg-[var(--pos-border)] flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-[var(--pos-muted)]" />
+              </div>
+              <span className="text-[var(--pos-muted)]">Choose an icon...</span>
+            </>
+          )}
+          <ChevronsUpDown className="w-5 h-5 text-[var(--pos-muted)] ml-auto" />
+        </button>
+
+        {isOpen && (
+          <div className="absolute top-full left-0 right-0 mt-2 rounded-xl bg-[var(--pos-panel-solid)] border border-[color:var(--pos-border)] shadow-xl z-10 overflow-hidden">
+            {/* Category Tabs */}
+            <div className="flex border-b border-[color:var(--pos-border)] overflow-x-auto">
+              {ICON_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.key}
+                  type="button"
+                  onClick={() => setActiveCategory(cat.key)}
+                  className={cn(
+                    "px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors",
+                    activeCategory === cat.key
+                      ? "bg-primary-500/10 text-primary-500 border-b-2 border-primary-500"
+                      : "text-[var(--pos-muted)] hover:bg-[var(--pos-border)]"
+                  )}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Icons Grid */}
+            <div className="p-3 max-h-48 overflow-y-auto">
+              <div className="grid grid-cols-5 gap-2">
+                {/* None option */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelect(null);
+                    setIsOpen(false);
+                  }}
+                  className={cn(
+                    "aspect-square rounded-xl flex flex-col items-center justify-center gap-1 transition-all hover:scale-105",
+                    !selectedIcon
+                      ? "bg-primary-500 text-white"
+                      : "bg-[var(--pos-bg)] border border-[color:var(--pos-border)] hover:border-primary-500"
+                  )}
+                >
+                  <Ban className="w-5 h-5" />
+                  <span className="text-[10px]">None</span>
+                </button>
+
+                {filteredIcons.map((item) => {
+                  const Icon = item.icon;
+                  const isSelected = selectedIcon === item.name;
+                  return (
+                    <button
+                      key={item.name}
+                      type="button"
+                      onClick={() => {
+                        onSelect(item.name);
+                        setIsOpen(false);
+                      }}
+                      className={cn(
+                        "aspect-square rounded-xl flex flex-col items-center justify-center gap-1 transition-all hover:scale-105",
+                        isSelected
+                          ? "bg-primary-500 text-white"
+                          : "bg-[var(--pos-bg)] border border-[color:var(--pos-border)] hover:border-primary-500"
+                      )}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="text-[10px] truncate max-w-full px-1">{item.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // ADD CUSTOM PRODUCT MODAL
 // ============================================================================
 
@@ -371,43 +645,58 @@ function AddCustomProductModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (name: string, priceCents: number) => void;
+  onAdd: (name: string, priceCents: number, icon?: string) => void;
   currency: string;
 }) {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
+  const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setName("");
       setPrice("");
+      setSelectedIcon(null);
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
+  // Auto-detect icon from product name
+  const detectedIcon = getProductIcon(name);
+  const displayIcon = selectedIcon
+    ? PRODUCT_ICONS.find((i) => i.name === selectedIcon)?.icon
+    : detectedIcon;
+
   const handleAdd = () => {
     const priceCents = safeParseMoneyToCents(price);
     if (!name.trim() || !priceCents || priceCents < 1) return;
-    onAdd(name.trim(), priceCents);
+    onAdd(name.trim(), priceCents, selectedIcon ?? undefined);
     onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-md rounded-2xl bg-[var(--pos-panel-solid)] overflow-hidden shadow-2xl">
+      <div className="w-full max-w-lg rounded-2xl bg-[var(--pos-panel-solid)] overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="p-5 border-b border-[color:var(--pos-border)]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center">
-                <Plus className="w-6 h-6 text-primary-500" />
+              <div className={cn(
+                "w-12 h-12 rounded-xl flex items-center justify-center transition-all",
+                displayIcon ? "bg-primary-500" : "bg-primary-500/10"
+              )}>
+                {displayIcon ? (
+                  React.createElement(displayIcon, { className: "w-6 h-6 text-white" })
+                ) : (
+                  <Plus className="w-6 h-6 text-primary-500" />
+                )}
               </div>
               <div>
                 <h2 className="font-bold text-lg">Add Custom Item</h2>
                 <p className="text-sm text-[var(--pos-muted)]">Add an item not in catalog</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 rounded-xl hover:bg-[var(--pos-border)]">
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-[var(--pos-border)] transition-colors">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -426,7 +715,16 @@ function AddCustomProductModal({
               className="w-full px-4 py-3 rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] focus:outline-none focus:ring-2 focus:ring-primary-500 text-lg"
               autoFocus
             />
+            {detectedIcon && !selectedIcon && (
+              <p className="text-xs text-primary-500 flex items-center gap-1">
+                <Check className="w-3 h-3" />
+                Icon auto-detected based on name
+              </p>
+            )}
           </div>
+
+          {/* Icon Selector */}
+          <IconSelector selectedIcon={selectedIcon} onSelect={setSelectedIcon} />
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-[var(--pos-muted)]">
@@ -451,7 +749,11 @@ function AddCustomProductModal({
             disabled={!name.trim() || !safeParseMoneyToCents(price)}
             className="w-full py-4 rounded-xl font-bold text-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            <Plus className="w-5 h-5" />
+            {displayIcon ? (
+              React.createElement(displayIcon, { className: "w-5 h-5" })
+            ) : (
+              <Plus className="w-5 h-5" />
+            )}
             Add Item
           </button>
         </div>
@@ -606,7 +908,7 @@ function CustomerSelectorModal({
           ) : search ? (
             <div className="text-center py-8 text-[var(--pos-muted)]">
               <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>No customers found matching "{search}"</p>
+              <p>No customers found matching &ldquo;{search}&rdquo;</p>
               <button
                 onClick={onCreateNew}
                 className="mt-4 px-6 py-2 rounded-xl bg-primary-500 text-white font-medium hover:bg-primary-600 transition-colors"
@@ -1532,6 +1834,8 @@ function ProductCard({
   onClick: () => void;
   disabled: boolean;
 }) {
+  const ProductIcon = getProductIcon(product.name);
+
   return (
     <button
       onClick={onClick}
@@ -1542,8 +1846,23 @@ function ProductCard({
         "text-white relative overflow-hidden"
       )}
     >
+      {/* Background decoration */}
       <div className="absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 rounded-full bg-white/10" />
+
+      {/* Product Icon */}
+      {ProductIcon && (
+        <div className="absolute top-3 right-3 opacity-30">
+          <ProductIcon className="w-10 h-10" />
+        </div>
+      )}
+
       <div className="relative">
+        {/* Icon badge */}
+        {ProductIcon && (
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center mb-2 backdrop-blur-sm">
+            <ProductIcon className="w-5 h-5" />
+          </div>
+        )}
         <div className="font-semibold text-sm line-clamp-2 mb-3 min-h-[40px]">
           {product.name}
         </div>
@@ -1778,6 +2097,7 @@ export function CheckoutView({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode, paymentModalOpen, discountModalOpen, noteModalOpen, customerModalOpen, canPay, canSendToKitchen]);
 
   // Order operations

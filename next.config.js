@@ -36,7 +36,7 @@ const nextConfig = {
   },
   // Image optimization
   images: {
-    domains: ["scopecode.ae"],
+    domains: ["nexuspoint.ae"],
     formats: ["image/avif", "image/webp"],
   },
   // Enable strict mode

@@ -76,7 +76,7 @@ function LoginForm() {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              placeholder="admin@scopecode.ae"
+              placeholder="admin@nexuspoint.ae"
               required
             />
           </div>
@@ -175,7 +175,7 @@ export default function AdminLoginPage() {
             <div className="relative w-16 h-16">
               <Image
                 src="/images/logo.png"
-                alt="ScopeCode"
+                alt="NexusPoint"
                 fill
                 className="object-contain"
               />
@@ -196,7 +196,7 @@ export default function AdminLoginPage() {
           {/* Footer */}
           <div className="mt-8 pt-6 border-t border-white/10">
             <p className="text-center text-sm text-slate-500">
-              © {new Date().getFullYear()} ScopeCode. All rights reserved.
+              © {new Date().getFullYear()} NexusPoint. All rights reserved.
             </p>
           </div>
         </div>

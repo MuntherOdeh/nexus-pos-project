@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   Search,
   Truck,
@@ -29,6 +29,8 @@ import {
   TrendingUp,
   TrendingDown,
   ClipboardList,
+  X,
+  Info,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -175,6 +177,19 @@ export function LogisticsView({ movements }: { movements: MovementRow[] }) {
   const [type, setType] = useState<string>("ALL");
   const [status, setStatus] = useState<string>("ALL");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  // Toast auto-dismiss
+  useEffect(() => {
+    if (toast) {
+      const timeout = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [toast]);
+
+  const showComingSoon = (feature: string) => {
+    setToast(`${feature} - Coming soon!`);
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -233,7 +248,10 @@ export function LogisticsView({ movements }: { movements: MovementRow[] }) {
           </p>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl">
-            <button className="p-4 rounded-xl border border-[color:var(--pos-border)] hover:border-primary-500 hover:bg-primary-500/5 transition-all text-center group">
+            <button
+              onClick={() => showComingSoon("Receive Stock")}
+              className="p-4 rounded-xl border border-[color:var(--pos-border)] hover:border-primary-500 hover:bg-primary-500/5 transition-all text-center group"
+            >
               <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center mx-auto mb-3 group-hover:bg-primary-500/20 transition-colors">
                 <ArrowDownToLine className="w-6 h-6 text-primary-500" />
               </div>
@@ -241,7 +259,10 @@ export function LogisticsView({ movements }: { movements: MovementRow[] }) {
               <div className="text-xs text-[var(--pos-muted)] mt-1">Record incoming goods</div>
             </button>
 
-            <button className="p-4 rounded-xl border border-[color:var(--pos-border)] hover:border-blue-500 hover:bg-blue-500/5 transition-all text-center group">
+            <button
+              onClick={() => showComingSoon("Ship Order")}
+              className="p-4 rounded-xl border border-[color:var(--pos-border)] hover:border-blue-500 hover:bg-blue-500/5 transition-all text-center group"
+            >
               <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mx-auto mb-3 group-hover:bg-blue-500/20 transition-colors">
                 <ArrowUpFromLine className="w-6 h-6 text-blue-500" />
               </div>
@@ -249,7 +270,10 @@ export function LogisticsView({ movements }: { movements: MovementRow[] }) {
               <div className="text-xs text-[var(--pos-muted)] mt-1">Record outgoing goods</div>
             </button>
 
-            <button className="p-4 rounded-xl border border-[color:var(--pos-border)] hover:border-purple-500 hover:bg-purple-500/5 transition-all text-center group">
+            <button
+              onClick={() => showComingSoon("Transfer Stock")}
+              className="p-4 rounded-xl border border-[color:var(--pos-border)] hover:border-purple-500 hover:bg-purple-500/5 transition-all text-center group"
+            >
               <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mx-auto mb-3 group-hover:bg-purple-500/20 transition-colors">
                 <ArrowLeftRight className="w-6 h-6 text-purple-500" />
               </div>
@@ -257,7 +281,10 @@ export function LogisticsView({ movements }: { movements: MovementRow[] }) {
               <div className="text-xs text-[var(--pos-muted)] mt-1">Move between locations</div>
             </button>
 
-            <button className="p-4 rounded-xl border border-[color:var(--pos-border)] hover:border-amber-500 hover:bg-amber-500/5 transition-all text-center group">
+            <button
+              onClick={() => showComingSoon("Stock Adjustment")}
+              className="p-4 rounded-xl border border-[color:var(--pos-border)] hover:border-amber-500 hover:bg-amber-500/5 transition-all text-center group"
+            >
               <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center mx-auto mb-3 group-hover:bg-amber-500/20 transition-colors">
                 <RefreshCw className="w-6 h-6 text-amber-500" />
               </div>
@@ -287,7 +314,10 @@ export function LogisticsView({ movements }: { movements: MovementRow[] }) {
             </div>
           </div>
 
-          <button className="px-5 py-3 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-2 hover:bg-primary-600 transition-colors shadow-lg">
+          <button
+            onClick={() => showComingSoon("New Movement")}
+            className="px-5 py-3 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-2 hover:bg-primary-600 transition-colors shadow-lg"
+          >
             <Plus className="w-5 h-5" />
             New Movement
           </button>
@@ -523,18 +553,27 @@ export function LogisticsView({ movements }: { movements: MovementRow[] }) {
                 <div className="grid grid-cols-2 gap-3 pt-4">
                   {selected.status === "DRAFT" && (
                     <>
-                      <button className="px-4 py-3 rounded-xl border border-[color:var(--pos-border)] font-medium flex items-center justify-center gap-2 hover:bg-[var(--pos-bg)] transition-colors">
+                      <button
+                        onClick={() => showComingSoon("Edit Movement")}
+                        className="px-4 py-3 rounded-xl border border-[color:var(--pos-border)] font-medium flex items-center justify-center gap-2 hover:bg-[var(--pos-bg)] transition-colors"
+                      >
                         <FileText className="w-4 h-4" />
                         Edit
                       </button>
-                      <button className="px-4 py-3 rounded-xl bg-primary-500 text-white font-medium flex items-center justify-center gap-2 hover:bg-primary-600 transition-colors">
+                      <button
+                        onClick={() => showComingSoon("Validate Movement")}
+                        className="px-4 py-3 rounded-xl bg-primary-500 text-white font-medium flex items-center justify-center gap-2 hover:bg-primary-600 transition-colors"
+                      >
                         <CheckCircle2 className="w-4 h-4" />
                         Validate
                       </button>
                     </>
                   )}
                   {(selected.status === "PENDING" || selected.status === "IN_PROGRESS") && (
-                    <button className="col-span-2 px-4 py-3 rounded-xl bg-primary-500 text-white font-medium flex items-center justify-center gap-2 hover:bg-primary-600 transition-colors">
+                    <button
+                      onClick={() => showComingSoon("Mark as Done")}
+                      className="col-span-2 px-4 py-3 rounded-xl bg-primary-500 text-white font-medium flex items-center justify-center gap-2 hover:bg-primary-600 transition-colors"
+                    >
                       <CheckCircle2 className="w-4 h-4" />
                       Mark as Done
                     </button>
@@ -545,6 +584,19 @@ export function LogisticsView({ movements }: { movements: MovementRow[] }) {
           )}
         </div>
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300">
+          <div className="px-6 py-3 rounded-2xl bg-[var(--pos-panel-solid)] border border-[color:var(--pos-border)] shadow-xl flex items-center gap-3">
+            <Info className="w-5 h-5 text-primary-500" />
+            <span className="font-medium">{toast}</span>
+            <button onClick={() => setToast(null)} className="p-1 rounded-lg hover:bg-[var(--pos-border)]">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -82,12 +82,12 @@ export default function AdminLayout({
             <div className="relative w-10 h-10">
               <Image
                 src="/images/logo.png"
-                alt="ScopeCode"
+                alt="NexusPoint"
                 fill
                 className="object-contain"
               />
             </div>
-            <span className="font-bold text-white">ScopeCode</span>
+            <span className="font-bold text-white">NexusPoint</span>
           </div>
           <button
             onClick={() => setIsSidebarOpen(false)}

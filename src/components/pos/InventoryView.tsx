@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   Search,
   Package,
@@ -19,6 +19,8 @@ import {
   TrendingUp,
   Box,
   Layers,
+  X,
+  Info,
 } from "lucide-react";
 import { formatMoney } from "@/lib/pos/format";
 import { cn } from "@/lib/utils";
@@ -49,6 +51,19 @@ export function InventoryView({ products }: { products: ProductRow[] }) {
   const [filter, setFilter] = useState<"all" | "low" | "out">("all");
   const [sortBy, setSortBy] = useState<"name" | "stock" | "price">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [toast, setToast] = useState<string | null>(null);
+
+  // Toast auto-dismiss
+  useEffect(() => {
+    if (toast) {
+      const timeout = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [toast]);
+
+  const showComingSoon = (feature: string) => {
+    setToast(`${feature} - Coming soon!`);
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -126,7 +141,10 @@ export function InventoryView({ products }: { products: ProductRow[] }) {
             </div>
           </div>
 
-          <button className="px-5 py-3 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-2 hover:bg-primary-600 transition-colors shadow-lg">
+          <button
+            onClick={() => showComingSoon("Add Product")}
+            className="px-5 py-3 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-2 hover:bg-primary-600 transition-colors shadow-lg"
+          >
             <Plus className="w-5 h-5" />
             Add Product
           </button>
@@ -211,7 +229,10 @@ export function InventoryView({ products }: { products: ProductRow[] }) {
               <p className="text-[var(--pos-muted)] max-w-md mb-6">
                 Add products to your catalog to start selling and managing inventory.
               </p>
-              <button className="px-6 py-3 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-2 hover:bg-primary-600 transition-colors">
+              <button
+                onClick={() => showComingSoon("Add Product")}
+                className="px-6 py-3 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-2 hover:bg-primary-600 transition-colors"
+              >
                 <Plus className="w-5 h-5" />
                 Add First Product
               </button>
@@ -381,11 +402,17 @@ export function InventoryView({ products }: { products: ProductRow[] }) {
 
               {/* Actions */}
               <div className="grid grid-cols-2 gap-3 pt-4">
-                <button className="px-4 py-3 rounded-xl border border-[color:var(--pos-border)] font-medium flex items-center justify-center gap-2 hover:bg-[var(--pos-bg)] transition-colors">
+                <button
+                  onClick={() => showComingSoon("Edit Product")}
+                  className="px-4 py-3 rounded-xl border border-[color:var(--pos-border)] font-medium flex items-center justify-center gap-2 hover:bg-[var(--pos-bg)] transition-colors"
+                >
                   <Edit3 className="w-4 h-4" />
                   Edit
                 </button>
-                <button className="px-4 py-3 rounded-xl border border-[color:var(--pos-border)] font-medium flex items-center justify-center gap-2 hover:bg-[var(--pos-bg)] transition-colors">
+                <button
+                  onClick={() => showComingSoon("Stock Adjustment")}
+                  className="px-4 py-3 rounded-xl border border-[color:var(--pos-border)] font-medium flex items-center justify-center gap-2 hover:bg-[var(--pos-bg)] transition-colors"
+                >
                   <Layers className="w-4 h-4" />
                   Adjust Stock
                 </button>
@@ -394,6 +421,19 @@ export function InventoryView({ products }: { products: ProductRow[] }) {
           )}
         </div>
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300">
+          <div className="px-6 py-3 rounded-2xl bg-[var(--pos-panel-solid)] border border-[color:var(--pos-border)] shadow-xl flex items-center gap-3">
+            <Info className="w-5 h-5 text-primary-500" />
+            <span className="font-medium">{toast}</span>
+            <button onClick={() => setToast(null)} className="p-1 rounded-lg hover:bg-[var(--pos-border)]">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

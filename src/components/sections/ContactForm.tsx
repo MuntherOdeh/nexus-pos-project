@@ -137,8 +137,8 @@ export function ContactForm() {
             <h4 className="font-semibold text-red-800">Something went wrong</h4>
             <p className="text-sm text-red-700">
               Please try again or contact us directly at{" "}
-              <a href="mailto:sales@scopecode.ae" className="underline">
-                sales@scopecode.ae
+              <a href="mailto:sales@nexuspoint.ae" className="underline">
+                sales@nexuspoint.ae
               </a>
             </p>
           </div>
