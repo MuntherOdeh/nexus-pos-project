@@ -40,7 +40,6 @@ export function Header() {
   const [isServicesOpen, setIsServicesOpen] = useState(false);
   const [isMobileServicesOpen, setIsMobileServicesOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const [hoveredNavItem, setHoveredNavItem] = useState<string | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -123,13 +122,11 @@ export function Header() {
                     onMouseEnter={() => {
                       if (isMounted) {
                         setIsServicesOpen(true);
-                        setHoveredNavItem(item.href);
                       }
                     }}
                     onMouseLeave={() => {
                       if (isMounted) {
                         setIsServicesOpen(false);
-                        setHoveredNavItem(null);
                       }
                     }}
                   >
@@ -141,10 +138,14 @@ export function Header() {
                         setIsServicesOpen(!isServicesOpen);
                       }}
                       className={cn(
-                        "relative flex items-center gap-1 px-4 py-2 text-sm font-medium rounded-full transition-all duration-300",
+                        "relative flex items-center gap-1 px-4 py-2.5 text-sm font-medium rounded-full transition-all duration-300",
                         pathname === item.href || pathname.startsWith("/services")
-                          ? isScrolled ? "text-primary-600 bg-primary-50" : "text-white bg-white/20"
-                          : isScrolled ? "text-neutral-700 hover:text-primary-600 hover:bg-primary-50" : "text-white/90 hover:text-white hover:bg-white/10",
+                          ? isScrolled
+                            ? "text-white bg-primary-600 shadow-md shadow-primary-500/25"
+                            : "text-white bg-white/20 backdrop-blur-sm"
+                          : isScrolled
+                            ? "text-neutral-600 hover:text-primary-600 hover:bg-neutral-100"
+                            : "text-white/90 hover:text-white hover:bg-white/10",
                         "group"
                       )}
                     >
@@ -247,27 +248,21 @@ export function Header() {
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    onMouseEnter={() => setHoveredNavItem(item.href)}
-                    onMouseLeave={() => setHoveredNavItem(null)}
                   >
                     <Link
                       href={item.href}
                       className={cn(
-                        "relative px-4 py-2 text-sm font-medium rounded-full transition-all duration-300 block",
+                        "relative px-4 py-2.5 text-sm font-medium rounded-full transition-all duration-300 block",
                         pathname === item.href
-                          ? isScrolled ? "text-primary-600 bg-primary-50" : "text-white bg-white/20"
-                          : isScrolled ? "text-neutral-700 hover:text-primary-600 hover:bg-primary-50" : "text-white/90 hover:text-white hover:bg-white/10"
+                          ? isScrolled
+                            ? "text-white bg-primary-600 shadow-md shadow-primary-500/25"
+                            : "text-white bg-white/20 backdrop-blur-sm"
+                          : isScrolled
+                            ? "text-neutral-600 hover:text-primary-600 hover:bg-neutral-100"
+                            : "text-white/90 hover:text-white hover:bg-white/10"
                       )}
                     >
                       {item.label}
-                      {hoveredNavItem === item.href && (
-                        <motion.div
-                          layoutId="navHighlight"
-                          className="absolute inset-0 rounded-full bg-primary-50 -z-10"
-                          initial={false}
-                          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                        />
-                      )}
                     </Link>
                   </motion.div>
                 )

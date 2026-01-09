@@ -253,57 +253,44 @@ html {
    POS Demo Theme Variables
    ----------------------------- */
 
+/* Base theme - defaults to light */
 .pos-theme {
-  --pos-bg: #070a12;
-  --pos-bg2: #0b1220;
-  --pos-panel: rgba(15, 23, 42, 0.85);
-  --pos-panel-solid: #0f172a;
-  --pos-border: rgba(148, 163, 184, 0.16);
-  --pos-text: #e5e7eb;
-  --pos-muted: #94a3b8;
+  --pos-bg: #f8fafc;
+  --pos-bg2: #ffffff;
+  --pos-panel: rgba(255, 255, 255, 0.95);
+  --pos-panel-solid: #ffffff;
+  --pos-border: rgba(0, 0, 0, 0.08);
+  --pos-text: #1e293b;
+  --pos-muted: #64748b;
   --pos-accent: #10b981;
-  --pos-accent2: #2dd4bf;
-  --pos-danger: #fb7185;
+  --pos-accent2: #0d9488;
+  --pos-danger: #ef4444;
   --pos-warning: #f59e0b;
   --pos-success: #22c55e;
 }
 
-.pos-theme--emerald {
+/* Light Theme */
+.pos-theme--light {
+  --pos-bg: #f8fafc;
+  --pos-bg2: #ffffff;
+  --pos-panel: rgba(255, 255, 255, 0.95);
+  --pos-panel-solid: #ffffff;
+  --pos-border: rgba(0, 0, 0, 0.08);
+  --pos-text: #1e293b;
+  --pos-muted: #64748b;
+  --pos-accent: #10b981;
+  --pos-accent2: #0d9488;
+}
+
+/* Dark Theme */
+.pos-theme--dark {
+  --pos-bg: #0f172a;
+  --pos-bg2: #1e293b;
+  --pos-panel: rgba(30, 41, 59, 0.95);
+  --pos-panel-solid: #1e293b;
+  --pos-border: rgba(148, 163, 184, 0.16);
+  --pos-text: #f1f5f9;
+  --pos-muted: #94a3b8;
   --pos-accent: #10b981;
   --pos-accent2: #2dd4bf;
-}
-
-.pos-theme--midnight {
-  --pos-bg: #050812;
-  --pos-bg2: #070a1a;
-  --pos-accent: #60a5fa;
-  --pos-accent2: #a78bfa;
-}
-
-.pos-theme--ocean {
-  --pos-bg: #050b12;
-  --pos-bg2: #071a24;
-  --pos-accent: #38bdf8;
-  --pos-accent2: #22c55e;
-}
-
-.pos-theme--sunset {
-  --pos-bg: #0f0710;
-  --pos-bg2: #1a0d13;
-  --pos-accent: #fb7185;
-  --pos-accent2: #f59e0b;
-}
-
-.pos-theme--neon {
-  --pos-bg: #050f0b;
-  --pos-bg2: #051a14;
-  --pos-accent: #22c55e;
-  --pos-accent2: #06b6d4;
-}
-
-.pos-theme--royal {
-  --pos-bg: #070613;
-  --pos-bg2: #0d0820;
-  --pos-accent: #a78bfa;
-  --pos-accent2: #f472b6;
 }

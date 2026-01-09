@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Ban, CheckCircle2, CreditCard, RefreshCw, Send, ShoppingCart, Wallet, X } from "lucide-react";
+import { Ban, CheckCircle2, CreditCard, RefreshCw, Send, ShoppingCart, Wallet, X, Plus, Minus, Search, Utensils } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/pos/format";
 import { PosCard, PosCardContent, PosCardHeader } from "@/components/pos/PosCard";
@@ -87,25 +87,26 @@ const PAY_PROVIDERS: Array<{
   label: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
+  color: string;
 }> = [
-  { key: "CASH", label: "Cash", description: "Record cash received + change.", icon: Wallet },
-  { key: "CARD", label: "Card", description: "Capture full outstanding amount.", icon: CreditCard },
-  { key: "BANK", label: "Bank", description: "Mark bank transfer as received.", icon: CheckCircle2 },
-  { key: "PAYPAL", label: "PayPal", description: "Mark PayPal as captured.", icon: CheckCircle2 },
+  { key: "CASH", label: "Cash", description: "Record cash received", icon: Wallet, color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" },
+  { key: "CARD", label: "Card", description: "Credit or debit card", icon: CreditCard, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" },
+  { key: "BANK", label: "Bank", description: "Bank transfer", icon: CheckCircle2, color: "text-purple-500 bg-purple-500/10 border-purple-500/20" },
+  { key: "PAYPAL", label: "PayPal", description: "PayPal payment", icon: CheckCircle2, color: "text-amber-500 bg-amber-500/10 border-amber-500/20" },
 ];
 
 function tableSurface(status?: string | null): string {
   switch (status) {
     case "IN_KITCHEN":
-      return "border-amber-400/25 bg-amber-500/10 hover:bg-amber-500/15";
+      return "border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15 shadow-amber-500/5";
     case "READY":
-      return "border-emerald-400/25 bg-emerald-500/10 hover:bg-emerald-500/15";
+      return "border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/15 shadow-emerald-500/5";
     case "FOR_PAYMENT":
-      return "border-sky-400/25 bg-sky-500/10 hover:bg-sky-500/15";
+      return "border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/15 shadow-blue-500/5";
     case "OPEN":
-      return "border-white/15 bg-white/5 hover:bg-white/10";
+      return "border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/15 shadow-purple-500/5";
     default:
-      return "border-[color:var(--pos-border)] bg-white/5 hover:bg-white/10";
+      return "border-[color:var(--pos-border)] bg-[var(--pos-bg)] hover:bg-[var(--pos-border)] shadow-sm";
   }
 }
 
@@ -352,7 +353,7 @@ export function CheckoutView({
         return;
       }
       setActiveOrder(data.order);
-      setToast("Sent to kitchen.");
+      setToast("Order sent to kitchen!");
       await refreshOpenOrders();
     } finally {
       setBusyKey(null);
@@ -419,8 +420,8 @@ export function CheckoutView({
       const changeDueCents = typeof data.changeDueCents === "number" ? data.changeDueCents : 0;
       setToast(
         changeDueCents > 0
-          ? `Payment captured. Change due: ${formatMoney({ cents: changeDueCents, currency: data.order.currency })}`
-          : "Payment captured."
+          ? `Payment captured! Change due: ${formatMoney({ cents: changeDueCents, currency: data.order.currency })}`
+          : "Payment captured!"
       );
       setPayOpen(false);
       await refreshOpenOrders();
@@ -431,12 +432,12 @@ export function CheckoutView({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3">
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <h1 className="text-3xl md:text-4xl font-display font-bold">Checkout</h1>
-          <p className="text-sm md:text-base text-[var(--pos-muted)] mt-2">
-            Floor plan, orders, kitchen sending, and payments for{" "}
-            <span className="font-semibold text-[var(--pos-text)]">{tenant.name}</span>.
+          <h1 className="text-2xl md:text-3xl font-bold">Point of Sale</h1>
+          <p className="text-sm text-[var(--pos-muted)] mt-1">
+            Manage orders for <span className="font-medium text-[var(--pos-text)]">{tenant.name}</span>
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -444,31 +445,33 @@ export function CheckoutView({
             type="button"
             onClick={startQuickSale}
             disabled={busyKey === "quick-sale"}
-            className="px-4 py-2 rounded-2xl border border-[color:var(--pos-border)] bg-white/5 hover:bg-white/10 text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-60"
+            className="px-5 py-2.5 rounded-xl bg-[var(--pos-accent)] text-white font-semibold text-sm inline-flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-60 shadow-lg shadow-[var(--pos-accent)]/20"
           >
-            <ShoppingCart className="w-4 h-4" />
-            Quick sale
+            <Plus className="w-4 h-4" />
+            Quick Sale
           </button>
           <button
             type="button"
             onClick={refreshOpenOrders}
-            className="px-4 py-2 rounded-2xl border border-[color:var(--pos-border)] bg-white/5 hover:bg-white/10 text-sm font-semibold inline-flex items-center gap-2"
+            className="p-2.5 rounded-xl border border-[color:var(--pos-border)] hover:bg-[var(--pos-border)] transition-colors"
+            title="Refresh"
           >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
+            <RefreshCw className="w-5 h-5 text-[var(--pos-muted)]" />
           </button>
         </div>
       </div>
 
+      {/* Notifications */}
       {(error || toast) && (
         <div
           className={cn(
-            "rounded-2xl border p-4 text-sm",
+            "rounded-xl border p-4 text-sm flex items-center gap-3",
             error
-              ? "bg-rose-500/10 border-rose-400/20 text-rose-200"
-              : "bg-emerald-500/10 border-emerald-400/20 text-emerald-200"
+              ? "bg-red-500/10 border-red-500/20 text-red-600"
+              : "bg-emerald-500/10 border-emerald-500/20 text-emerald-600"
           )}
         >
+          {error ? <X className="w-5 h-5 flex-shrink-0" /> : <CheckCircle2 className="w-5 h-5 flex-shrink-0" />}
           {error || toast}
         </div>
       )}
@@ -478,9 +481,14 @@ export function CheckoutView({
         <PosCard className="xl:col-span-5">
           <PosCardHeader>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold">Floor plan</div>
-                <div className="text-xs text-[var(--pos-muted)]">Click a table to open or continue an order.</div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                  <Utensils className="w-5 h-5 text-blue-500" />
+                </div>
+                <div>
+                  <div className="font-semibold">Floor Plan</div>
+                  <div className="text-xs text-[var(--pos-muted)]">Select a table</div>
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {floors.map((floor) => (
@@ -489,10 +497,10 @@ export function CheckoutView({
                     type="button"
                     onClick={() => setActiveFloorId(floor.id)}
                     className={cn(
-                      "px-3 py-1.5 rounded-full border text-xs font-semibold",
+                      "px-4 py-2 rounded-xl text-sm font-medium transition-all",
                       floor.id === activeFloor?.id
-                        ? "border-white/20 bg-white/10 text-white"
-                        : "border-[color:var(--pos-border)] bg-white/5 hover:bg-white/10 text-[var(--pos-muted)]"
+                        ? "bg-[var(--pos-accent)] text-white shadow-lg shadow-[var(--pos-accent)]/20"
+                        : "border border-[color:var(--pos-border)] hover:bg-[var(--pos-border)] text-[var(--pos-muted)]"
                     )}
                   >
                     {floor.name}
@@ -502,13 +510,8 @@ export function CheckoutView({
             </div>
           </PosCardHeader>
           <PosCardContent>
-            <div className="rounded-2xl border border-[color:var(--pos-border)] bg-white/5 overflow-auto">
-              <div className="relative w-[800px] h-[520px]">
-                <div className="absolute inset-0 opacity-60 pointer-events-none">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.07),transparent_55%)]" />
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,rgba(255,255,255,0.05),transparent_55%)]" />
-                </div>
-
+            <div className="rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] overflow-auto">
+              <div className="relative w-[800px] h-[520px] p-4">
                 {activeFloor?.tables.map((table) => {
                   const order = openOrderByTable.get(table.id);
                   const selected = selectedTableId === table.id;
@@ -521,11 +524,11 @@ export function CheckoutView({
                       disabled={isBusy}
                       onClick={() => openTable(table.id)}
                       className={cn(
-                        "absolute border shadow-sm text-left transition-colors focus:outline-none",
-                        "focus:ring-2 focus:ring-[color:var(--pos-accent2)] disabled:opacity-70 disabled:cursor-wait",
+                        "absolute border-2 shadow-lg text-left transition-all focus:outline-none",
+                        "focus:ring-2 focus:ring-[var(--pos-accent)] focus:ring-offset-2 disabled:opacity-70 disabled:cursor-wait",
                         tableSurface(order?.status),
                         table.shape === "ROUND" ? "rounded-full" : "rounded-2xl",
-                        selected ? "ring-2 ring-[color:var(--pos-accent2)]" : ""
+                        selected ? "ring-2 ring-[var(--pos-accent)] ring-offset-2" : ""
                       )}
                       style={{
                         left: table.x,
@@ -538,7 +541,7 @@ export function CheckoutView({
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <div className="font-bold text-sm truncate">{table.name}</div>
-                            <div className="text-[11px] text-[var(--pos-muted)]">Seats {table.capacity}</div>
+                            <div className="text-[11px] text-[var(--pos-muted)]">{table.capacity} seats</div>
                           </div>
                           {order && <StatusBadge status={order.status} />}
                         </div>
@@ -546,14 +549,14 @@ export function CheckoutView({
                         {order ? (
                           <div className="flex items-end justify-between gap-2">
                             <div className="text-[11px] text-[var(--pos-muted)] font-mono truncate">
-                              {order.orderNumber}
+                              #{order.orderNumber.slice(-4)}
                             </div>
-                            <div className="text-xs font-semibold">
+                            <div className="text-sm font-bold text-[var(--pos-accent)]">
                               {formatMoney({ cents: order.totalCents, currency: order.currency })}
                             </div>
                           </div>
                         ) : (
-                          <div className="text-[11px] text-[var(--pos-muted)]">Tap to open</div>
+                          <div className="text-[11px] text-[var(--pos-muted)]">Available</div>
                         )}
                       </div>
                     </button>
@@ -568,14 +571,19 @@ export function CheckoutView({
         <PosCard className="xl:col-span-3">
           <PosCardHeader>
             <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold">Order</div>
-                <div className="text-xs text-[var(--pos-muted)]">
-                  {activeOrder?.table
-                    ? `Table ${activeOrder.table.name}`
-                    : activeOrder
-                      ? "Quick sale"
-                      : "No order open"}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                  <ShoppingCart className="w-5 h-5 text-purple-500" />
+                </div>
+                <div>
+                  <div className="font-semibold">Current Order</div>
+                  <div className="text-xs text-[var(--pos-muted)]">
+                    {activeOrder?.table
+                      ? `Table ${activeOrder.table.name}`
+                      : activeOrder
+                        ? "Quick sale"
+                        : "No order"}
+                  </div>
                 </div>
               </div>
               {activeOrder && <StatusBadge status={activeOrder.status} />}
@@ -583,89 +591,81 @@ export function CheckoutView({
           </PosCardHeader>
           <PosCardContent>
             {!activeOrder ? (
-              <div className="rounded-2xl border border-[color:var(--pos-border)] bg-white/5 p-5">
-                <div className="text-sm font-semibold">Start selling</div>
-                <div className="text-xs text-[var(--pos-muted)] mt-1">
-                  Pick a table from the floor plan, or start a quick sale.
+              <div className="rounded-xl border border-dashed border-[color:var(--pos-border)] bg-[var(--pos-bg)] p-6 text-center">
+                <ShoppingCart className="w-12 h-12 mx-auto text-[var(--pos-muted)] mb-4" />
+                <div className="font-semibold mb-1">No Active Order</div>
+                <div className="text-sm text-[var(--pos-muted)] mb-4">
+                  Select a table or start a quick sale
                 </div>
                 <button
                   type="button"
                   onClick={startQuickSale}
                   disabled={busyKey === "quick-sale"}
-                  className="mt-4 w-full px-4 py-2.5 rounded-2xl border border-[color:var(--pos-border)] bg-white/5 hover:bg-white/10 text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-60"
+                  className="px-5 py-2.5 rounded-xl bg-[var(--pos-accent)] text-white font-semibold text-sm inline-flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-60"
                 >
-                  <ShoppingCart className="w-4 h-4" />
-                  Quick sale
+                  <Plus className="w-4 h-4" />
+                  Start Quick Sale
                 </button>
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="rounded-2xl border border-[color:var(--pos-border)] bg-white/5 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-xs text-[var(--pos-muted)]">Order</div>
-                      <div className="font-mono text-xs break-all">{activeOrder.orderNumber}</div>
-                    </div>
-                    <div className="text-xs text-[var(--pos-muted)] font-mono">{activeOrder.currency}</div>
-                  </div>
+                {/* Order Info */}
+                <div className="rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] p-3 flex items-center justify-between">
+                  <div className="text-xs text-[var(--pos-muted)]">Order #{activeOrder.orderNumber.slice(-6)}</div>
+                  <div className="text-xs font-medium">{activeOrder.currency}</div>
                 </div>
 
-                <div className="rounded-2xl border border-[color:var(--pos-border)] bg-[var(--pos-panel-solid)]">
-                  <div className="p-4 border-b border-[color:var(--pos-border)] flex items-center justify-between">
+                {/* Items List */}
+                <div className="rounded-xl border border-[color:var(--pos-border)] overflow-hidden">
+                  <div className="p-3 border-b border-[color:var(--pos-border)] bg-[var(--pos-bg)] flex items-center justify-between">
                     <div className="text-sm font-semibold">Items</div>
-                    <div className="text-xs text-[var(--pos-muted)]">{activeOrder.items.length}</div>
+                    <div className="text-xs text-[var(--pos-muted)] bg-[var(--pos-border)] px-2 py-0.5 rounded-full">
+                      {activeOrder.items.length}
+                    </div>
                   </div>
-                  <div className="max-h-[360px] overflow-auto">
+                  <div className="max-h-[300px] overflow-auto">
                     {activeOrder.items.map((item) => {
                       const editable = item.status === "NEW";
                       const lineTotal = item.unitPriceCents * item.quantity;
                       return (
                         <div
                           key={item.id}
-                          className="p-4 border-b border-[color:var(--pos-border)] last:border-b-0"
+                          className="p-3 border-b border-[color:var(--pos-border)] last:border-b-0 hover:bg-[var(--pos-bg)] transition-colors"
                         >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="font-semibold truncate">{item.productName}</div>
-                              <div className="mt-1 flex items-center gap-2 flex-wrap">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium text-sm truncate">{item.productName}</div>
+                              <div className="flex items-center gap-2 mt-1">
                                 <StatusBadge status={item.status} />
-                                {item.notes && (
-                                  <span className="text-xs text-[var(--pos-muted)] truncate max-w-[160px]">
-                                    {item.notes}
-                                  </span>
-                                )}
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="text-sm font-semibold">
+                              <div className="font-semibold text-sm">
                                 {formatMoney({ cents: lineTotal, currency: activeOrder.currency })}
-                              </div>
-                              <div className="text-xs text-[var(--pos-muted)] mt-0.5">
-                                {formatMoney({ cents: item.unitPriceCents, currency: activeOrder.currency })} ea
                               </div>
                             </div>
                           </div>
 
-                          <div className="mt-3 flex items-center justify-between gap-3">
-                            <div className="inline-flex items-center rounded-2xl border border-[color:var(--pos-border)] bg-white/5 overflow-hidden">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="inline-flex items-center rounded-lg border border-[color:var(--pos-border)] overflow-hidden">
                               <button
                                 type="button"
                                 disabled={!editable || busyKey === `item:${item.id}` || item.quantity <= 1}
                                 onClick={() => patchItem(item.id, { quantity: item.quantity - 1 })}
-                                className="px-3 py-1.5 text-sm hover:bg-white/10 disabled:opacity-50"
+                                className="p-1.5 hover:bg-[var(--pos-border)] disabled:opacity-40 transition-colors"
                               >
-                                -
+                                <Minus className="w-4 h-4" />
                               </button>
-                              <div className="px-3 py-1.5 text-sm font-semibold w-10 text-center">
+                              <div className="px-3 text-sm font-semibold min-w-[32px] text-center">
                                 {item.quantity}
                               </div>
                               <button
                                 type="button"
                                 disabled={!editable || busyKey === `item:${item.id}`}
                                 onClick={() => patchItem(item.id, { quantity: item.quantity + 1 })}
-                                className="px-3 py-1.5 text-sm hover:bg-white/10 disabled:opacity-50"
+                                className="p-1.5 hover:bg-[var(--pos-border)] disabled:opacity-40 transition-colors"
                               >
-                                +
+                                <Plus className="w-4 h-4" />
                               </button>
                             </div>
 
@@ -673,10 +673,10 @@ export function CheckoutView({
                               type="button"
                               disabled={busyKey === `item:${item.id}`}
                               onClick={() => patchItem(item.id, { status: "VOID" })}
-                              className="px-3 py-2 rounded-2xl border border-[color:var(--pos-border)] bg-white/5 hover:bg-white/10 text-xs font-semibold inline-flex items-center gap-2 disabled:opacity-60"
+                              className="p-1.5 rounded-lg border border-red-500/20 text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-40"
+                              title="Remove item"
                             >
-                              <Ban className="w-4 h-4" />
-                              Void
+                              <X className="w-4 h-4" />
                             </button>
                           </div>
                         </div>
@@ -685,72 +685,68 @@ export function CheckoutView({
 
                     {activeOrder.items.length === 0 && (
                       <div className="p-6 text-center text-sm text-[var(--pos-muted)]">
-                        Add items from the menu to start the order.
+                        Add items from the menu
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-[color:var(--pos-border)] bg-white/5 p-4 space-y-2">
+                {/* Totals */}
+                <div className="rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] p-4 space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-[var(--pos-muted)]">Subtotal</span>
-                    <span className="font-semibold">
-                      {formatMoney({ cents: activeOrder.subtotalCents, currency: activeOrder.currency })}
-                    </span>
+                    <span>{formatMoney({ cents: activeOrder.subtotalCents, currency: activeOrder.currency })}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-[var(--pos-muted)]">Tax</span>
-                    <span className="font-semibold">
-                      {formatMoney({ cents: activeOrder.taxCents, currency: activeOrder.currency })}
-                    </span>
+                    <span>{formatMoney({ cents: activeOrder.taxCents, currency: activeOrder.currency })}</span>
                   </div>
-                  <div className="flex items-center justify-between text-base border-t border-[color:var(--pos-border)] pt-3">
-                    <span className="font-semibold">Total</span>
-                    <span className="text-lg font-bold">
+                  <div className="flex items-center justify-between text-lg font-bold border-t border-[color:var(--pos-border)] pt-3 mt-3">
+                    <span>Total</span>
+                    <span className="text-[var(--pos-accent)]">
                       {formatMoney({ cents: activeOrder.totalCents, currency: activeOrder.currency })}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-xs text-[var(--pos-muted)]">
-                    <span>Paid</span>
-                    <span className="font-mono">{formatMoney({ cents: paidCents, currency: activeOrder.currency })}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-[var(--pos-muted)]">
-                    <span>Outstanding</span>
-                    <span className="font-mono">
-                      {formatMoney({ cents: outstandingCents, currency: activeOrder.currency })}
-                    </span>
-                  </div>
+                  {paidCents > 0 && (
+                    <div className="flex items-center justify-between text-xs text-[var(--pos-muted)] pt-1">
+                      <span>Paid</span>
+                      <span>{formatMoney({ cents: paidCents, currency: activeOrder.currency })}</span>
+                    </div>
+                  )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    disabled={!canSendToKitchen || busyKey === "send"}
-                    onClick={sendToKitchen}
-                    className="px-4 py-2.5 rounded-2xl border border-[color:var(--pos-border)] bg-white/5 hover:bg-white/10 text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-60"
-                  >
-                    <Send className="w-4 h-4" />
-                    Send
-                  </button>
+                {/* Action Buttons */}
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      disabled={!canSendToKitchen || busyKey === "send"}
+                      onClick={sendToKitchen}
+                      className="px-4 py-3 rounded-xl bg-amber-500 text-white font-semibold text-sm inline-flex items-center justify-center gap-2 hover:bg-amber-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <Send className="w-4 h-4" />
+                      Kitchen
+                    </button>
 
-                  <button
-                    type="button"
-                    disabled={!canPay || busyKey === "pay"}
-                    onClick={openPay}
-                    className="px-4 py-2.5 rounded-2xl border border-[color:var(--pos-border)] bg-white/5 hover:bg-white/10 text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-60"
-                  >
-                    <CreditCard className="w-4 h-4" />
-                    Pay
-                  </button>
+                    <button
+                      type="button"
+                      disabled={!canPay || busyKey === "pay"}
+                      onClick={openPay}
+                      className="px-4 py-3 rounded-xl bg-emerald-500 text-white font-semibold text-sm inline-flex items-center justify-center gap-2 hover:bg-emerald-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      Payment
+                    </button>
+                  </div>
 
                   <button
                     type="button"
                     disabled={activeOrder.status === "PAID" || busyKey === "cancel"}
                     onClick={cancelOrder}
-                    className="col-span-2 px-4 py-2.5 rounded-2xl border border-[color:var(--pos-border)] bg-white/5 hover:bg-white/10 text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-60"
+                    className="w-full px-4 py-2.5 rounded-xl border border-red-500/30 text-red-500 font-medium text-sm inline-flex items-center justify-center gap-2 hover:bg-red-500/10 transition-colors disabled:opacity-40"
                   >
                     <Ban className="w-4 h-4" />
-                    Cancel order
+                    Cancel Order
                   </button>
                 </div>
               </div>
@@ -762,43 +758,68 @@ export function CheckoutView({
         <PosCard className="xl:col-span-4">
           <PosCardHeader>
             <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold">Menu</div>
-                <div className="text-xs text-[var(--pos-muted)]">Tap an item to add it to the order.</div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                  <Utensils className="w-5 h-5 text-emerald-500" />
+                </div>
+                <div>
+                  <div className="font-semibold">Menu</div>
+                  <div className="text-xs text-[var(--pos-muted)]">Tap to add items</div>
+                </div>
               </div>
-              <input
-                value={menuQuery}
-                onChange={(e) => setMenuQuery(e.target.value)}
-                placeholder="Search..."
-                className="w-48 max-w-full px-3 py-2 rounded-2xl border border-[color:var(--pos-border)] bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--pos-accent2)]"
-              />
             </div>
           </PosCardHeader>
           <PosCardContent>
-            <div className="space-y-5 max-h-[700px] overflow-auto pr-1">
+            {/* Search */}
+            <div className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--pos-muted)]" />
+                <input
+                  value={menuQuery}
+                  onChange={(e) => setMenuQuery(e.target.value)}
+                  placeholder="Search menu..."
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--pos-accent)] focus:border-transparent transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Products */}
+            <div className="space-y-5 max-h-[600px] overflow-auto pr-1">
               {filteredCatalog.categories.map((category) => (
                 <div key={category.id}>
                   <div className="flex items-center justify-between gap-3 mb-3">
-                    <div className="font-semibold">{category.name}</div>
-                    <div className="text-xs text-[var(--pos-muted)]">{category.products.length}</div>
+                    <div className="font-semibold text-sm">{category.name}</div>
+                    <div className="text-xs text-[var(--pos-muted)] bg-[var(--pos-border)] px-2 py-0.5 rounded-full">
+                      {category.products.length}
+                    </div>
                   </div>
-                  <div className="grid sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2">
                     {category.products.map((product) => {
                       const busy = busyKey === `add:${product.id}`;
                       return (
                         <button
                           key={product.id}
                           type="button"
-                          disabled={busy}
+                          disabled={busy || !activeOrder}
                           onClick={() => addProduct(product.id)}
-                          className="rounded-2xl border border-[color:var(--pos-border)] bg-white/5 hover:bg-white/10 p-4 text-left transition-colors disabled:opacity-60"
+                          className={cn(
+                            "rounded-xl border border-[color:var(--pos-border)] p-3 text-left transition-all",
+                            activeOrder
+                              ? "hover:border-[var(--pos-accent)] hover:bg-[var(--pos-accent)]/5 cursor-pointer"
+                              : "opacity-50 cursor-not-allowed",
+                            "disabled:opacity-50"
+                          )}
                         >
-                          <div className="font-semibold truncate">{product.name}</div>
-                          <div className="mt-2 flex items-center justify-between gap-2">
-                            <div className="text-sm font-semibold">
+                          <div className="font-medium text-sm truncate mb-2">{product.name}</div>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="font-bold text-[var(--pos-accent)]">
                               {formatMoney({ cents: product.priceCents, currency: product.currency })}
                             </div>
-                            <div className="text-xs text-[var(--pos-muted)]">{busy ? "Adding..." : "Add"}</div>
+                            {activeOrder && (
+                              <div className="w-6 h-6 rounded-full bg-[var(--pos-accent)]/10 flex items-center justify-center">
+                                <Plus className="w-3 h-3 text-[var(--pos-accent)]" />
+                              </div>
+                            )}
                           </div>
                         </button>
                       );
@@ -810,26 +831,23 @@ export function CheckoutView({
               {filteredCatalog.uncategorized.length > 0 && (
                 <div>
                   <div className="flex items-center justify-between gap-3 mb-3">
-                    <div className="font-semibold">Other</div>
+                    <div className="font-semibold text-sm">Other</div>
                     <div className="text-xs text-[var(--pos-muted)]">{filteredCatalog.uncategorized.length}</div>
                   </div>
-                  <div className="grid sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2">
                     {filteredCatalog.uncategorized.map((product) => {
                       const busy = busyKey === `add:${product.id}`;
                       return (
                         <button
                           key={product.id}
                           type="button"
-                          disabled={busy}
+                          disabled={busy || !activeOrder}
                           onClick={() => addProduct(product.id)}
-                          className="rounded-2xl border border-[color:var(--pos-border)] bg-white/5 hover:bg-white/10 p-4 text-left transition-colors disabled:opacity-60"
+                          className="rounded-xl border border-[color:var(--pos-border)] hover:border-[var(--pos-accent)] hover:bg-[var(--pos-accent)]/5 p-3 text-left transition-all disabled:opacity-50"
                         >
-                          <div className="font-semibold truncate">{product.name}</div>
-                          <div className="mt-2 flex items-center justify-between gap-2">
-                            <div className="text-sm font-semibold">
-                              {formatMoney({ cents: product.priceCents, currency: product.currency })}
-                            </div>
-                            <div className="text-xs text-[var(--pos-muted)]">{busy ? "Adding..." : "Add"}</div>
+                          <div className="font-medium text-sm truncate mb-2">{product.name}</div>
+                          <div className="font-bold text-[var(--pos-accent)]">
+                            {formatMoney({ cents: product.priceCents, currency: product.currency })}
                           </div>
                         </button>
                       );
@@ -839,93 +857,113 @@ export function CheckoutView({
               )}
 
               {filteredCatalog.categories.length === 0 && filteredCatalog.uncategorized.length === 0 && (
-                <div className="text-sm text-[var(--pos-muted)]">No matching products.</div>
+                <div className="text-center py-8 text-[var(--pos-muted)]">
+                  <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <div className="text-sm">No products found</div>
+                </div>
               )}
             </div>
           </PosCardContent>
         </PosCard>
       </div>
 
+      {/* Payment Modal */}
       {payOpen && activeOrder && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="w-full max-w-lg rounded-3xl border border-[color:var(--pos-border)] bg-[var(--pos-panel-solid)] overflow-hidden">
-            <div className="p-6 border-b border-[color:var(--pos-border)] flex items-start justify-between gap-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-2xl border border-[color:var(--pos-border)] bg-[var(--pos-panel-solid)] overflow-hidden shadow-2xl">
+            <div className="p-5 border-b border-[color:var(--pos-border)] flex items-center justify-between">
               <div>
-                <div className="text-sm font-semibold">Take payment</div>
-                <div className="text-xs text-[var(--pos-muted)] font-mono mt-1">{activeOrder.orderNumber}</div>
+                <div className="font-semibold">Payment</div>
+                <div className="text-xs text-[var(--pos-muted)]">Order #{activeOrder.orderNumber.slice(-6)}</div>
               </div>
               <button
                 type="button"
                 onClick={() => setPayOpen(false)}
-                className="p-2 rounded-2xl border border-[color:var(--pos-border)] bg-white/5 hover:bg-white/10"
-                aria-label="Close"
+                className="p-2 rounded-xl border border-[color:var(--pos-border)] hover:bg-[var(--pos-border)] transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="p-6 space-y-5">
-              <div className="rounded-2xl border border-[color:var(--pos-border)] bg-white/5 p-4 flex items-center justify-between">
-                <div className="text-sm text-[var(--pos-muted)]">Outstanding</div>
-                <div className="text-lg font-bold">
+
+            <div className="p-5 space-y-5">
+              {/* Amount */}
+              <div className="rounded-xl bg-[var(--pos-accent)]/10 p-4 text-center">
+                <div className="text-sm text-[var(--pos-muted)] mb-1">Amount Due</div>
+                <div className="text-3xl font-bold text-[var(--pos-accent)]">
                   {formatMoney({ cents: outstandingCents, currency: activeOrder.currency })}
                 </div>
               </div>
 
+              {/* Payment Methods */}
               <div className="grid grid-cols-2 gap-3">
                 {PAY_PROVIDERS.map((p) => {
                   const Icon = p.icon;
+                  const isSelected = payProvider === p.key;
                   return (
                     <button
                       key={p.key}
                       type="button"
                       onClick={() => setPayProvider(p.key)}
                       className={cn(
-                        "rounded-2xl border p-4 text-left transition-colors",
-                        payProvider === p.key
-                          ? "border-white/20 bg-white/10"
-                          : "border-[color:var(--pos-border)] bg-white/5 hover:bg-white/10"
+                        "rounded-xl border-2 p-4 text-left transition-all",
+                        isSelected
+                          ? "border-[var(--pos-accent)] bg-[var(--pos-accent)]/5"
+                          : "border-[color:var(--pos-border)] hover:border-[var(--pos-accent)]/50"
                       )}
                     >
-                      <div className="inline-flex items-center gap-2 text-sm font-semibold">
-                        <Icon className="w-4 h-4" />
-                        {p.label}
+                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-2", p.color)}>
+                        <Icon className="w-5 h-5" />
                       </div>
-                      <div className="text-xs text-[var(--pos-muted)] mt-1">{p.description}</div>
+                      <div className="font-semibold text-sm">{p.label}</div>
+                      <div className="text-xs text-[var(--pos-muted)]">{p.description}</div>
                     </button>
                   );
                 })}
               </div>
 
+              {/* Cash Input */}
               {payProvider === "CASH" && (
-                <div className="rounded-2xl border border-[color:var(--pos-border)] bg-white/5 p-4 space-y-2">
-                  <div className="text-sm font-semibold">Cash received</div>
+                <div className="rounded-xl border border-[color:var(--pos-border)] p-4">
+                  <div className="text-sm font-medium mb-2">Cash Received</div>
                   <input
                     value={cashReceived}
                     onChange={(e) => setCashReceived(e.target.value)}
                     placeholder={(outstandingCents / 100).toFixed(2)}
-                    className="w-full px-3 py-2 rounded-2xl border border-[color:var(--pos-border)] bg-[var(--pos-panel-solid)] text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--pos-accent2)]"
+                    className="w-full px-4 py-3 rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] text-lg font-semibold text-center focus:outline-none focus:ring-2 focus:ring-[var(--pos-accent)]"
                   />
-                  <div className="text-xs text-[var(--pos-muted)]">
-                    Change due:{" "}
-                    {(() => {
-                      const received = safeParseMoneyToCents(cashReceived) ?? outstandingCents;
-                      return formatMoney({
-                        cents: Math.max(0, received - outstandingCents),
-                        currency: activeOrder.currency,
-                      });
-                    })()}
+                  <div className="text-center text-sm text-[var(--pos-muted)] mt-2">
+                    Change:{" "}
+                    <span className="font-semibold text-[var(--pos-text)]">
+                      {(() => {
+                        const received = safeParseMoneyToCents(cashReceived) ?? outstandingCents;
+                        return formatMoney({
+                          cents: Math.max(0, received - outstandingCents),
+                          currency: activeOrder.currency,
+                        });
+                      })()}
+                    </span>
                   </div>
                 </div>
               )}
 
+              {/* Confirm Button */}
               <button
                 type="button"
                 disabled={busyKey === "pay"}
                 onClick={confirmPay}
-                className="w-full px-4 py-3 rounded-2xl border border-[color:var(--pos-border)] bg-white/5 hover:bg-white/10 text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-60"
+                className="w-full px-4 py-4 rounded-xl bg-[var(--pos-accent)] text-white font-semibold text-base inline-flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-60 shadow-lg shadow-[var(--pos-accent)]/20"
               >
-                <CheckCircle2 className="w-5 h-5" />
-                Confirm payment
+                {busyKey === "pay" ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-5 h-5" />
+                    Confirm Payment
+                  </>
+                )}
               </button>
             </div>
           </div>
