@@ -1,11 +1,57 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Ban, CheckCircle2, CreditCard, RefreshCw, Send, ShoppingCart, Wallet, X, Plus, Minus, Search, Utensils } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import {
+  Ban,
+  CheckCircle2,
+  CreditCard,
+  Send,
+  ShoppingCart,
+  Wallet,
+  X,
+  Plus,
+  Minus,
+  Search,
+  Grid3X3,
+  User,
+  Percent,
+  StickyNote,
+  Trash2,
+  LayoutGrid,
+  Banknote,
+  Clock,
+  Receipt,
+  Gift,
+  Users,
+  Package,
+  Star,
+  Heart,
+  Coffee,
+  UtensilsCrossed,
+  ShoppingBag,
+  Layers,
+  DollarSign,
+  ChevronsUpDown,
+  Building2,
+  Phone,
+  Mail,
+  Check,
+  AlertCircle,
+  Truck,
+  Store,
+  UserPlus,
+  Printer,
+  Pause,
+  CircleDollarSign,
+  ArrowLeft,
+  Zap,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/pos/format";
-import { PosCard, PosCardContent, PosCardHeader } from "@/components/pos/PosCard";
-import { StatusBadge } from "@/components/pos/StatusBadge";
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 type Floor = {
   id: string;
@@ -29,6 +75,7 @@ type CatalogProduct = {
   priceCents: number;
   currency: string;
   categoryId: string | null;
+  image?: string;
 };
 
 type CatalogCategory = {
@@ -56,6 +103,7 @@ type OrderItem = {
   quantity: number;
   status: string;
   notes: string | null;
+  discountPercent?: number;
 };
 
 type OrderPayment = {
@@ -65,6 +113,14 @@ type OrderPayment = {
   amountCents: number;
 };
 
+type Customer = {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  points?: number;
+};
+
 type OrderDetail = {
   id: string;
   status: string;
@@ -72,41 +128,103 @@ type OrderDetail = {
   notes: string | null;
   subtotalCents: number;
   taxCents: number;
+  discountCents?: number;
   totalCents: number;
   currency: string;
   openedAt: string;
   table: { id: string; name: string; capacity: number } | null;
+  customer?: Customer | null;
   items: OrderItem[];
   payments: OrderPayment[];
 };
 
 type PayProvider = "CASH" | "CARD" | "BANK" | "PAYPAL";
+type ViewMode = "floor" | "products" | "payment";
+type OrderType = "DINE_IN" | "TAKEAWAY" | "DELIVERY";
+
+type HeldOrder = {
+  id: string;
+  name: string;
+  items: OrderItem[];
+  customer?: Customer | null;
+  orderType: OrderType;
+  heldAt: string;
+  totalCents: number;
+};
+
+type POSSession = {
+  id: string;
+  openedAt: string;
+  closedAt?: string;
+  openingBalance: number;
+  closingBalance?: number;
+  cashierName: string;
+  status: "OPEN" | "CLOSED";
+  salesCount: number;
+  totalSales: number;
+};
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
 
 const PAY_PROVIDERS: Array<{
   key: PayProvider;
   label: string;
-  description: string;
   icon: React.ComponentType<{ className?: string }>;
   color: string;
+  bgColor: string;
+  light: string;
 }> = [
-  { key: "CASH", label: "Cash", description: "Record cash received", icon: Wallet, color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" },
-  { key: "CARD", label: "Card", description: "Credit or debit card", icon: CreditCard, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" },
-  { key: "BANK", label: "Bank", description: "Bank transfer", icon: CheckCircle2, color: "text-purple-500 bg-purple-500/10 border-purple-500/20" },
-  { key: "PAYPAL", label: "PayPal", description: "PayPal payment", icon: CheckCircle2, color: "text-amber-500 bg-amber-500/10 border-amber-500/20" },
+  { key: "CASH", label: "Cash", icon: Banknote, color: "text-primary-500", bgColor: "bg-primary-500", light: "bg-primary-500/10" },
+  { key: "CARD", label: "Card", icon: CreditCard, color: "text-blue-500", bgColor: "bg-blue-500", light: "bg-blue-500/10" },
+  { key: "BANK", label: "Bank Transfer", icon: Building2, color: "text-purple-500", bgColor: "bg-purple-500", light: "bg-purple-500/10" },
+  { key: "PAYPAL", label: "Digital Wallet", icon: Wallet, color: "text-secondary-500", bgColor: "bg-secondary-500", light: "bg-secondary-500/10" },
 ];
 
-function tableSurface(status?: string | null): string {
+const CATEGORY_COLORS = [
+  { bg: "bg-primary-500", text: "text-primary-500", light: "bg-primary-500/10", border: "border-primary-500" },
+  { bg: "bg-secondary-500", text: "text-secondary-500", light: "bg-secondary-500/10", border: "border-secondary-500" },
+  { bg: "bg-rose-500", text: "text-rose-500", light: "bg-rose-500/10", border: "border-rose-500" },
+  { bg: "bg-orange-500", text: "text-orange-500", light: "bg-orange-500/10", border: "border-orange-500" },
+  { bg: "bg-amber-500", text: "text-amber-500", light: "bg-amber-500/10", border: "border-amber-500" },
+  { bg: "bg-cyan-500", text: "text-cyan-500", light: "bg-cyan-500/10", border: "border-cyan-500" },
+  { bg: "bg-blue-500", text: "text-blue-500", light: "bg-blue-500/10", border: "border-blue-500" },
+  { bg: "bg-indigo-500", text: "text-indigo-500", light: "bg-indigo-500/10", border: "border-indigo-500" },
+  { bg: "bg-violet-500", text: "text-violet-500", light: "bg-violet-500/10", border: "border-violet-500" },
+  { bg: "bg-purple-500", text: "text-purple-500", light: "bg-purple-500/10", border: "border-purple-500" },
+  { bg: "bg-fuchsia-500", text: "text-fuchsia-500", light: "bg-fuchsia-500/10", border: "border-fuchsia-500" },
+  { bg: "bg-pink-500", text: "text-pink-500", light: "bg-pink-500/10", border: "border-pink-500" },
+];
+
+const CATEGORY_ICONS = [
+  UtensilsCrossed, Coffee, ShoppingBag, Package, Gift, Star, Heart, Layers,
+];
+
+function getCategoryColor(index: number) {
+  return CATEGORY_COLORS[index % CATEGORY_COLORS.length];
+}
+
+function getCategoryIcon(index: number) {
+  return CATEGORY_ICONS[index % CATEGORY_ICONS.length];
+}
+
+// ============================================================================
+// UTILITIES
+// ============================================================================
+
+function getTableStatus(status?: string | null): { bg: string; text: string; label: string; border: string } {
   switch (status) {
     case "IN_KITCHEN":
-      return "border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15 shadow-amber-500/5";
+      return { bg: "bg-amber-500", text: "text-white", label: "Cooking", border: "border-amber-500" };
     case "READY":
-      return "border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/15 shadow-emerald-500/5";
+      return { bg: "bg-primary-500", text: "text-white", label: "Ready", border: "border-primary-500" };
     case "FOR_PAYMENT":
-      return "border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/15 shadow-blue-500/5";
+      return { bg: "bg-blue-500", text: "text-white", label: "Bill", border: "border-blue-500" };
     case "OPEN":
-      return "border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/15 shadow-purple-500/5";
+      return { bg: "bg-secondary-500", text: "text-white", label: "Busy", border: "border-secondary-500" };
     default:
-      return "border-[color:var(--pos-border)] bg-[var(--pos-bg)] hover:bg-[var(--pos-border)] shadow-sm";
+      return { bg: "bg-[var(--pos-bg2)]", text: "text-[var(--pos-text)]", label: "Available", border: "border-[color:var(--pos-border)]" };
   }
 }
 
@@ -117,6 +235,1358 @@ function safeParseMoneyToCents(input: string): number | null {
   if (!Number.isFinite(value)) return null;
   return Math.round(value * 100);
 }
+
+function formatTime(date: string | Date): string {
+  return new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function generateOrderId(): string {
+  return `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+}
+
+// ============================================================================
+// NUMPAD COMPONENT (Odoo-style)
+// ============================================================================
+
+function Numpad({
+  value,
+  onChange,
+  onEnter,
+  mode = "amount",
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  onEnter?: () => void;
+  mode?: "amount" | "quantity" | "discount";
+}) {
+  const handleKey = (key: string) => {
+    if (key === "C") {
+      onChange("");
+    } else if (key === "⌫") {
+      onChange(value.slice(0, -1));
+    } else if (key === ".") {
+      if (mode === "quantity") return;
+      if (!value.includes(".")) {
+        onChange(value + key);
+      }
+    } else if (key === "ENTER") {
+      onEnter?.();
+    } else if (key === "+/-") {
+      if (value.startsWith("-")) {
+        onChange(value.slice(1));
+      } else if (value) {
+        onChange("-" + value);
+      }
+    } else {
+      onChange(value + key);
+    }
+  };
+
+  const numKeys = [
+    ["1", "2", "3"],
+    ["4", "5", "6"],
+    ["7", "8", "9"],
+    [mode === "amount" ? "." : "+/-", "0", "⌫"],
+  ];
+
+  return (
+    <div className="grid gap-2">
+      {numKeys.map((row, rowIndex) => (
+        <div key={rowIndex} className="grid grid-cols-3 gap-2">
+          {row.map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => handleKey(key)}
+              className={cn(
+                "h-12 rounded-xl font-bold text-lg transition-all active:scale-95",
+                key === "⌫"
+                  ? "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
+                  : "bg-[var(--pos-bg)] border border-[color:var(--pos-border)] hover:bg-[var(--pos-border)] hover:border-primary-500"
+              )}
+            >
+              {key}
+            </button>
+          ))}
+        </div>
+      ))}
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => handleKey("C")}
+          className="h-12 rounded-xl font-bold text-sm bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all active:scale-95"
+        >
+          Clear
+        </button>
+        <button
+          type="button"
+          onClick={() => handleKey("ENTER")}
+          className="h-12 rounded-xl font-bold text-sm bg-primary-500 text-white hover:bg-primary-600 transition-all active:scale-95"
+        >
+          Confirm
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// QUICK AMOUNT BUTTONS
+// ============================================================================
+
+function QuickAmountButtons({
+  currency,
+  onSelect,
+}: {
+  currency: string;
+  onSelect: (cents: number) => void;
+}) {
+  const amounts = [500, 1000, 2000, 5000, 10000, 20000];
+
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {amounts.map((cents) => (
+        <button
+          key={cents}
+          type="button"
+          onClick={() => onSelect(cents)}
+          className="h-10 rounded-xl font-semibold text-xs bg-[var(--pos-bg)] border border-[color:var(--pos-border)] hover:bg-primary-500/10 hover:border-primary-500 transition-all"
+        >
+          {formatMoney({ cents, currency })}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================================
+// ADD CUSTOM PRODUCT MODAL
+// ============================================================================
+
+function AddCustomProductModal({
+  isOpen,
+  onClose,
+  onAdd,
+  currency,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onAdd: (name: string, priceCents: number) => void;
+  currency: string;
+}) {
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      setName("");
+      setPrice("");
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleAdd = () => {
+    const priceCents = safeParseMoneyToCents(price);
+    if (!name.trim() || !priceCents || priceCents < 1) return;
+    onAdd(name.trim(), priceCents);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="w-full max-w-md rounded-2xl bg-[var(--pos-panel-solid)] overflow-hidden shadow-2xl">
+        <div className="p-5 border-b border-[color:var(--pos-border)]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center">
+                <Plus className="w-6 h-6 text-primary-500" />
+              </div>
+              <div>
+                <h2 className="font-bold text-lg">Add Custom Item</h2>
+                <p className="text-sm text-[var(--pos-muted)]">Add an item not in catalog</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-[var(--pos-border)]">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-[var(--pos-muted)]">
+              Item Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter item name..."
+              className="w-full px-4 py-3 rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] focus:outline-none focus:ring-2 focus:ring-primary-500 text-lg"
+              autoFocus
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-[var(--pos-muted)]">
+              Price ({currency})
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--pos-muted)] font-medium">{currency}</span>
+              <input
+                type="text"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="0.00"
+                className="w-full pl-16 pr-4 py-3 rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] focus:outline-none focus:ring-2 focus:ring-primary-500 text-lg text-right font-bold"
+              />
+            </div>
+          </div>
+
+          <Numpad value={price} onChange={setPrice} onEnter={handleAdd} />
+
+          <button
+            onClick={handleAdd}
+            disabled={!name.trim() || !safeParseMoneyToCents(price)}
+            className="w-full py-4 rounded-xl font-bold text-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Add Item
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// CUSTOMER SELECTOR MODAL
+// ============================================================================
+
+function CustomerSelectorModal({
+  isOpen,
+  onClose,
+  onSelect,
+  onCreateNew,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSelect: (customer: Customer | null) => void;
+  onCreateNew: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [customers, setCustomers] = useState<Customer[]>([]);
+
+  // Customers would be fetched from API in real app
+
+  const filteredCustomers = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    if (!q) return customers;
+    return customers.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.email?.toLowerCase().includes(q) ||
+        c.phone?.includes(q)
+    );
+  }, [customers, search]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="w-full max-w-2xl max-h-[80vh] rounded-2xl bg-[var(--pos-panel-solid)] overflow-hidden shadow-2xl flex flex-col">
+        <div className="p-5 border-b border-[color:var(--pos-border)] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center">
+              <Users className="w-6 h-6 text-primary-500" />
+            </div>
+            <div>
+              <h2 className="font-bold text-lg">Select Customer</h2>
+              <p className="text-sm text-[var(--pos-muted)]">Choose a customer or continue as guest</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl hover:bg-[var(--pos-border)] transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="p-4 border-b border-[color:var(--pos-border)]">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--pos-muted)]" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, email or phone..."
+              className="w-full pl-12 pr-4 py-3 rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] focus:outline-none focus:ring-2 focus:ring-primary-500 text-lg"
+              autoFocus
+            />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-auto p-4">
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <button
+              onClick={() => {
+                onSelect(null);
+                onClose();
+              }}
+              className="p-4 rounded-xl border-2 border-dashed border-[color:var(--pos-border)] hover:border-primary-500 hover:bg-primary-500/5 transition-all flex items-center gap-4"
+            >
+              <div className="w-12 h-12 rounded-full bg-[var(--pos-bg)] flex items-center justify-center">
+                <User className="w-6 h-6 text-[var(--pos-muted)]" />
+              </div>
+              <div className="text-left">
+                <div className="font-semibold">Guest</div>
+                <div className="text-sm text-[var(--pos-muted)]">No customer info</div>
+              </div>
+            </button>
+
+            <button
+              onClick={onCreateNew}
+              className="p-4 rounded-xl bg-primary-500/10 border-2 border-primary-500/30 hover:bg-primary-500/20 transition-all flex items-center gap-4"
+            >
+              <div className="w-12 h-12 rounded-full bg-primary-500/20 flex items-center justify-center">
+                <UserPlus className="w-6 h-6 text-primary-500" />
+              </div>
+              <div className="text-left">
+                <div className="font-semibold text-primary-500">New Customer</div>
+                <div className="text-sm text-[var(--pos-muted)]">Create new</div>
+              </div>
+            </button>
+          </div>
+
+          {filteredCustomers.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-sm text-[var(--pos-muted)] px-1 mb-2">Recent Customers</p>
+              {filteredCustomers.map((customer) => (
+                <button
+                  key={customer.id}
+                  onClick={() => {
+                    onSelect(customer);
+                    onClose();
+                  }}
+                  className="w-full p-4 rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] hover:border-primary-500 hover:bg-primary-500/5 transition-all flex items-center gap-4"
+                >
+                  <div className="w-12 h-12 rounded-full bg-primary-500/10 flex items-center justify-center">
+                    <span className="text-lg font-bold text-primary-500">
+                      {customer.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 text-left">
+                    <div className="font-semibold">{customer.name}</div>
+                    <div className="flex items-center gap-4 text-sm text-[var(--pos-muted)]">
+                      {customer.email && (
+                        <span className="flex items-center gap-1">
+                          <Mail className="w-3 h-3" />
+                          {customer.email}
+                        </span>
+                      )}
+                      {customer.phone && (
+                        <span className="flex items-center gap-1">
+                          <Phone className="w-3 h-3" />
+                          {customer.phone}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {customer.points !== undefined && customer.points > 0 && (
+                    <div className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 text-sm font-medium flex items-center gap-1">
+                      <Star className="w-3 h-3" />
+                      {customer.points}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          ) : search ? (
+            <div className="text-center py-8 text-[var(--pos-muted)]">
+              <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>No customers found matching "{search}"</p>
+              <button
+                onClick={onCreateNew}
+                className="mt-4 px-6 py-2 rounded-xl bg-primary-500 text-white font-medium hover:bg-primary-600 transition-colors"
+              >
+                Create New Customer
+              </button>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-[var(--pos-muted)]">
+              <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p className="font-medium">No customers yet</p>
+              <p className="text-sm mt-1">Add customers to build your database</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// CREATE CUSTOMER MODAL
+// ============================================================================
+
+function CreateCustomerModal({
+  isOpen,
+  onClose,
+  onSave,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (customer: Customer) => void;
+}) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      setName("");
+      setEmail("");
+      setPhone("");
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSave = () => {
+    if (!name.trim()) return;
+    onSave({
+      id: `customer-${Date.now()}`,
+      name: name.trim(),
+      email: email.trim() || undefined,
+      phone: phone.trim() || undefined,
+      points: 0,
+    });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="w-full max-w-md rounded-2xl bg-[var(--pos-panel-solid)] overflow-hidden shadow-2xl">
+        <div className="p-5 border-b border-[color:var(--pos-border)]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center">
+                <UserPlus className="w-6 h-6 text-primary-500" />
+              </div>
+              <div>
+                <h2 className="font-bold text-lg">New Customer</h2>
+                <p className="text-sm text-[var(--pos-muted)]">Add customer details</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-[var(--pos-border)]">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-[var(--pos-muted)]">
+              Name *
+            </label>
+            <div className="relative">
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--pos-muted)]" />
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Customer name"
+                className="w-full pl-12 pr-4 py-3 rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] focus:outline-none focus:ring-2 focus:ring-primary-500"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-[var(--pos-muted)]">
+              Email
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--pos-muted)]" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="customer@example.com"
+                className="w-full pl-12 pr-4 py-3 rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-[var(--pos-muted)]">
+              Phone
+            </label>
+            <div className="relative">
+              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--pos-muted)]" />
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+1 234 567 890"
+                className="w-full pl-12 pr-4 py-3 rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 rounded-xl font-medium bg-[var(--pos-bg)] border border-[color:var(--pos-border)] hover:bg-[var(--pos-border)]"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!name.trim()}
+              className="flex-1 py-3 rounded-xl font-medium bg-primary-500 text-white hover:bg-primary-600 disabled:opacity-50"
+            >
+              Save Customer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// DISCOUNT MODAL
+// ============================================================================
+
+function DiscountModal({
+  isOpen,
+  onClose,
+  onApply,
+  currentDiscount,
+  itemName,
+  maxAmount,
+  currency,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onApply: (type: "percent" | "amount", value: number) => void;
+  currentDiscount?: number;
+  itemName?: string;
+  maxAmount: number;
+  currency: string;
+}) {
+  const [discountType, setDiscountType] = useState<"percent" | "amount">("percent");
+  const [value, setValue] = useState(currentDiscount?.toString() || "");
+
+  if (!isOpen) return null;
+
+  const handleApply = () => {
+    const numValue = parseFloat(value);
+    if (isNaN(numValue) || numValue < 0) return;
+    if (discountType === "percent" && numValue > 100) return;
+    if (discountType === "amount" && numValue * 100 > maxAmount) return;
+    onApply(discountType, discountType === "percent" ? numValue : numValue * 100);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="w-full max-w-md rounded-2xl bg-[var(--pos-panel-solid)] overflow-hidden shadow-2xl">
+        <div className="p-5 border-b border-[color:var(--pos-border)]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                <Percent className="w-5 h-5 text-amber-500" />
+              </div>
+              <div>
+                <h2 className="font-bold text-lg">Discount</h2>
+                {itemName && <p className="text-sm text-[var(--pos-muted)]">{itemName}</p>}
+              </div>
+            </div>
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-[var(--pos-border)]">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setDiscountType("percent")}
+              className={cn(
+                "p-4 rounded-xl font-medium transition-all flex items-center justify-center gap-2",
+                discountType === "percent"
+                  ? "bg-primary-500 text-white"
+                  : "bg-[var(--pos-bg)] border border-[color:var(--pos-border)]"
+              )}
+            >
+              <Percent className="w-5 h-5" />
+              Percentage
+            </button>
+            <button
+              onClick={() => setDiscountType("amount")}
+              className={cn(
+                "p-4 rounded-xl font-medium transition-all flex items-center justify-center gap-2",
+                discountType === "amount"
+                  ? "bg-primary-500 text-white"
+                  : "bg-[var(--pos-bg)] border border-[color:var(--pos-border)]"
+              )}
+            >
+              <DollarSign className="w-5 h-5" />
+              Fixed
+            </button>
+          </div>
+
+          <div className="rounded-xl border border-[color:var(--pos-border)] p-4">
+            <div className="text-sm text-[var(--pos-muted)] mb-2">
+              {discountType === "percent" ? "Discount %" : `Discount (${currency})`}
+            </div>
+            <div className="text-4xl font-bold text-center text-amber-500">
+              {discountType === "percent" ? `${value || "0"}%` : formatMoney({ cents: (parseFloat(value) || 0) * 100, currency })}
+            </div>
+          </div>
+
+          <Numpad
+            value={value}
+            onChange={setValue}
+            onEnter={handleApply}
+            mode={discountType === "percent" ? "discount" : "amount"}
+          />
+
+          <div className="grid grid-cols-5 gap-2">
+            {[5, 10, 15, 20, 25].map((pct) => (
+              <button
+                key={pct}
+                onClick={() => {
+                  setDiscountType("percent");
+                  setValue(pct.toString());
+                }}
+                className={cn(
+                  "py-3 rounded-xl font-medium transition-all",
+                  discountType === "percent" && parseFloat(value) === pct
+                    ? "bg-amber-500 text-white"
+                    : "bg-[var(--pos-bg)] border border-[color:var(--pos-border)] hover:border-amber-500"
+                )}
+              >
+                {pct}%
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// NOTE MODAL
+// ============================================================================
+
+function NoteModal({
+  isOpen,
+  onClose,
+  onSave,
+  currentNote,
+  title,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (note: string) => void;
+  currentNote?: string | null;
+  title: string;
+}) {
+  const [note, setNote] = useState(currentNote || "");
+
+  useEffect(() => {
+    if (isOpen) setNote(currentNote || "");
+  }, [isOpen, currentNote]);
+
+  if (!isOpen) return null;
+
+  const quickNotes = [
+    "No ice", "Extra spicy", "No sugar", "Less salt", "Well done",
+    "Medium rare", "Allergies", "To go", "No onions", "Gluten free",
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="w-full max-w-lg rounded-2xl bg-[var(--pos-panel-solid)] overflow-hidden shadow-2xl">
+        <div className="p-5 border-b border-[color:var(--pos-border)]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                <StickyNote className="w-5 h-5 text-blue-500" />
+              </div>
+              <h2 className="font-bold text-lg">{title}</h2>
+            </div>
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-[var(--pos-border)]">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Add your note here..."
+            className="w-full h-32 p-4 rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none text-lg"
+            autoFocus
+          />
+
+          <div className="flex flex-wrap gap-2">
+            {quickNotes.map((qn) => (
+              <button
+                key={qn}
+                onClick={() => setNote((prev) => (prev ? prev + ", " + qn : qn))}
+                className="px-3 py-2 rounded-lg text-sm bg-[var(--pos-bg)] border border-[color:var(--pos-border)] hover:border-primary-500 transition-all"
+              >
+                {qn}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => setNote("")}
+              className="flex-1 py-3 rounded-xl font-medium bg-[var(--pos-bg)] border border-[color:var(--pos-border)] hover:bg-[var(--pos-border)]"
+            >
+              Clear
+            </button>
+            <button
+              onClick={() => {
+                onSave(note);
+                onClose();
+              }}
+              className="flex-1 py-3 rounded-xl font-medium bg-primary-500 text-white hover:bg-primary-600"
+            >
+              Save Note
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// PAYMENT MODAL (ODOO-STYLE)
+// ============================================================================
+
+function PaymentModal({
+  isOpen,
+  onClose,
+  totalCents,
+  paidCents,
+  currency,
+  onPay,
+  onComplete,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  totalCents: number;
+  paidCents: number;
+  currency: string;
+  onPay: (provider: PayProvider, amountCents: number) => void;
+  onComplete: () => void;
+}) {
+  const [selectedProvider, setSelectedProvider] = useState<PayProvider>("CASH");
+  const [amount, setAmount] = useState("");
+  const remainingCents = totalCents - paidCents;
+
+  useEffect(() => {
+    if (isOpen) {
+      setAmount((remainingCents / 100).toFixed(2));
+    }
+  }, [isOpen, remainingCents]);
+
+  if (!isOpen) return null;
+
+  const handlePay = () => {
+    const cents = safeParseMoneyToCents(amount);
+    if (!cents || cents < 1) return;
+    onPay(selectedProvider, cents);
+  };
+
+  const enteredCents = safeParseMoneyToCents(amount) || 0;
+  const changeDue = selectedProvider === "CASH" ? Math.max(0, enteredCents - remainingCents) : 0;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="w-full max-w-3xl rounded-2xl bg-[var(--pos-panel-solid)] overflow-hidden shadow-2xl">
+        <div className="p-5 border-b border-[color:var(--pos-border)]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center">
+                <CircleDollarSign className="w-6 h-6 text-primary-500" />
+              </div>
+              <div>
+                <h2 className="font-bold text-xl">Payment</h2>
+                <p className="text-sm text-[var(--pos-muted)]">
+                  {paidCents > 0
+                    ? `${formatMoney({ cents: paidCents, currency })} paid - ${formatMoney({ cents: remainingCents, currency })} remaining`
+                    : `Total: ${formatMoney({ cents: totalCents, currency })}`
+                  }
+                </p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-[var(--pos-border)]">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5">
+          <div className="grid grid-cols-2 gap-6">
+            {/* Left side - Amount and Numpad */}
+            <div className="space-y-4">
+              <div className="rounded-2xl bg-gradient-to-br from-primary-500 to-secondary-500 p-6 text-white">
+                <div className="text-sm opacity-80 mb-1">Amount to Pay</div>
+                <div className="text-4xl font-bold">
+                  {currency} {amount || "0.00"}
+                </div>
+                {selectedProvider === "CASH" && changeDue > 0 && (
+                  <div className="mt-3 pt-3 border-t border-white/20">
+                    <div className="text-sm opacity-80">Change Due</div>
+                    <div className="text-2xl font-bold">{formatMoney({ cents: changeDue, currency })}</div>
+                  </div>
+                )}
+              </div>
+
+              <QuickAmountButtons currency={currency} onSelect={(cents) => setAmount((cents / 100).toFixed(2))} />
+
+              <Numpad value={amount} onChange={setAmount} onEnter={handlePay} />
+            </div>
+
+            {/* Right side - Payment methods */}
+            <div className="space-y-4">
+              <div className="font-medium text-[var(--pos-muted)] text-sm uppercase tracking-wide">
+                Payment Method
+              </div>
+              <div className="space-y-2">
+                {PAY_PROVIDERS.map((provider) => {
+                  const Icon = provider.icon;
+                  const isSelected = selectedProvider === provider.key;
+                  return (
+                    <button
+                      key={provider.key}
+                      onClick={() => setSelectedProvider(provider.key)}
+                      className={cn(
+                        "w-full p-4 rounded-xl flex items-center gap-4 transition-all",
+                        isSelected
+                          ? `${provider.bgColor} text-white shadow-lg`
+                          : "bg-[var(--pos-bg)] border border-[color:var(--pos-border)] hover:border-primary-500"
+                      )}
+                    >
+                      <div className={cn(
+                        "w-12 h-12 rounded-xl flex items-center justify-center",
+                        isSelected ? "bg-white/20" : provider.light
+                      )}>
+                        <Icon className={cn("w-6 h-6", isSelected ? "text-white" : provider.color)} />
+                      </div>
+                      <span className="font-semibold text-lg">{provider.label}</span>
+                      {isSelected && <Check className="w-6 h-6 ml-auto" />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={handlePay}
+                disabled={!enteredCents || enteredCents < 1}
+                className="w-full py-5 rounded-xl font-bold text-xl bg-primary-500 text-white hover:bg-primary-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-lg"
+              >
+                <CheckCircle2 className="w-7 h-7" />
+                Validate Payment
+              </button>
+
+              {paidCents > 0 && (
+                <div className="rounded-xl bg-primary-500/10 p-4">
+                  <div className="flex items-center gap-2 text-primary-500 font-medium mb-2">
+                    <CheckCircle2 className="w-5 h-5" />
+                    Payment Received
+                  </div>
+                  <div className="text-sm text-[var(--pos-muted)]">
+                    {formatMoney({ cents: paidCents, currency })} of {formatMoney({ cents: totalCents, currency })} paid
+                  </div>
+                  <div className="w-full bg-[var(--pos-bg)] rounded-full h-2 mt-2">
+                    <div
+                      className="bg-primary-500 h-2 rounded-full transition-all"
+                      style={{ width: `${(paidCents / totalCents) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// RECEIPT PREVIEW MODAL
+// ============================================================================
+
+function ReceiptPreviewModal({
+  isOpen,
+  onClose,
+  order,
+  tenantName,
+  onPrint,
+  onNewOrder,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  order: OrderDetail | null;
+  tenantName: string;
+  onPrint: () => void;
+  onNewOrder: () => void;
+}) {
+  if (!isOpen || !order) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="w-full max-w-sm rounded-2xl bg-[var(--pos-panel-solid)] overflow-hidden shadow-2xl">
+        <div className="p-4 border-b border-[color:var(--pos-border)] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5 text-primary-500" />
+            </div>
+            <h2 className="font-bold text-lg">Payment Complete!</h2>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-[var(--pos-border)]">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Receipt */}
+        <div className="p-6 bg-white text-black font-mono text-sm">
+          <div className="text-center mb-4">
+            <div className="text-lg font-bold">{tenantName}</div>
+            <div className="text-xs text-gray-500">Thank you for your visit!</div>
+          </div>
+
+          <div className="border-t border-dashed border-gray-300 my-3" />
+
+          <div className="flex justify-between text-xs text-gray-500 mb-2">
+            <span>Order #{order.orderNumber.slice(-6)}</span>
+            <span suppressHydrationWarning>{new Date(order.openedAt).toLocaleString()}</span>
+          </div>
+
+          {order.table && (
+            <div className="text-xs text-gray-500 mb-2">
+              Table: {order.table.name}
+            </div>
+          )}
+
+          <div className="border-t border-dashed border-gray-300 my-3" />
+
+          {/* Items */}
+          <div className="space-y-2">
+            {order.items.filter(i => i.status !== "VOID").map((item) => (
+              <div key={item.id} className="flex justify-between">
+                <div>
+                  <span>{item.quantity}x </span>
+                  <span>{item.productName}</span>
+                </div>
+                <span>{formatMoney({ cents: item.unitPriceCents * item.quantity, currency: order.currency })}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t border-dashed border-gray-300 my-3" />
+
+          {/* Totals */}
+          <div className="space-y-1">
+            <div className="flex justify-between">
+              <span>Subtotal</span>
+              <span>{formatMoney({ cents: order.subtotalCents, currency: order.currency })}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Tax</span>
+              <span>{formatMoney({ cents: order.taxCents, currency: order.currency })}</span>
+            </div>
+            <div className="flex justify-between font-bold text-base pt-2 border-t border-gray-300">
+              <span>TOTAL</span>
+              <span>{formatMoney({ cents: order.totalCents, currency: order.currency })}</span>
+            </div>
+          </div>
+
+          <div className="border-t border-dashed border-gray-300 my-3" />
+
+          <div className="text-center text-xs text-gray-500">
+            <div>Thank you!</div>
+            <div className="mt-1">Please come again</div>
+          </div>
+        </div>
+
+        <div className="p-4 border-t border-[color:var(--pos-border)] space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={onPrint}
+              className="py-3 rounded-xl font-medium bg-[var(--pos-bg)] border border-[color:var(--pos-border)] hover:bg-[var(--pos-border)] flex items-center justify-center gap-2"
+            >
+              <Printer className="w-4 h-4" />
+              Print
+            </button>
+            <button
+              onClick={() => {
+                // Would send via email
+              }}
+              className="py-3 rounded-xl font-medium bg-[var(--pos-bg)] border border-[color:var(--pos-border)] hover:bg-[var(--pos-border)] flex items-center justify-center gap-2"
+            >
+              <Mail className="w-4 h-4" />
+              Email
+            </button>
+          </div>
+          <button
+            onClick={onNewOrder}
+            className="w-full py-4 rounded-xl font-bold bg-primary-500 text-white hover:bg-primary-600 flex items-center justify-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            New Order
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// HELD ORDERS PANEL
+// ============================================================================
+
+function HeldOrdersPanel({
+  isOpen,
+  onClose,
+  heldOrders,
+  currency,
+  onRecall,
+  onDelete,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  heldOrders: HeldOrder[];
+  currency: string;
+  onRecall: (order: HeldOrder) => void;
+  onDelete: (id: string) => void;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-4">
+      <div className="w-full sm:w-96 h-[80vh] sm:h-full sm:max-h-[90vh] rounded-t-2xl sm:rounded-2xl bg-[var(--pos-panel-solid)] overflow-hidden shadow-2xl flex flex-col">
+        <div className="p-5 border-b border-[color:var(--pos-border)]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                <Pause className="w-5 h-5 text-amber-500" />
+              </div>
+              <div>
+                <h2 className="font-bold text-lg">Held Orders</h2>
+                <p className="text-sm text-[var(--pos-muted)]">{heldOrders.length} orders on hold</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-[var(--pos-border)]">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-auto p-4">
+          {heldOrders.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-[var(--pos-muted)]">
+              <Pause className="w-16 h-16 mb-4 opacity-50" />
+              <p className="text-lg font-medium">No Held Orders</p>
+              <p className="text-sm mt-1">Orders you put on hold will appear here</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {heldOrders.map((order) => (
+                <div
+                  key={order.id}
+                  className="p-4 rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)]"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-semibold">{order.name}</div>
+                    <span className="text-xs text-[var(--pos-muted)]" suppressHydrationWarning>
+                      {formatTime(order.heldAt)}
+                    </span>
+                  </div>
+                  <div className="text-sm text-[var(--pos-muted)] mb-3">
+                    {order.items.length} items - {formatMoney({ cents: order.totalCents, currency })}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => onRecall(order)}
+                      className="flex-1 py-2 rounded-lg font-medium bg-primary-500 text-white hover:bg-primary-600 text-sm"
+                    >
+                      Recall
+                    </button>
+                    <button
+                      onClick={() => onDelete(order.id)}
+                      className="px-3 py-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// ORDER TYPE SELECTOR
+// ============================================================================
+
+const ORDER_TYPES: Array<{
+  key: OrderType;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+  bgColor: string;
+}> = [
+  { key: "DINE_IN", label: "Dine In", icon: UtensilsCrossed, color: "text-primary-500", bgColor: "bg-primary-500" },
+  { key: "TAKEAWAY", label: "Takeaway", icon: ShoppingBag, color: "text-amber-500", bgColor: "bg-amber-500" },
+  { key: "DELIVERY", label: "Delivery", icon: Truck, color: "text-blue-500", bgColor: "bg-blue-500" },
+];
+
+function OrderTypeSelector({
+  selected,
+  onChange,
+  disabled,
+}: {
+  selected: OrderType;
+  onChange: (type: OrderType) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-1 p-1 bg-[var(--pos-bg)] rounded-xl">
+      {ORDER_TYPES.map((type) => {
+        const Icon = type.icon;
+        const isSelected = selected === type.key;
+        return (
+          <button
+            key={type.key}
+            onClick={() => onChange(type.key)}
+            disabled={disabled}
+            className={cn(
+              "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+              isSelected
+                ? `${type.bgColor} text-white`
+                : "hover:bg-[var(--pos-border)]",
+              disabled && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            <Icon className="w-4 h-4" />
+            <span className="hidden sm:inline">{type.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ============================================================================
+// ORDER LINE ITEM
+// ============================================================================
+
+function OrderLineItem({
+  item,
+  currency,
+  isSelected,
+  onSelect,
+  onQuantityChange,
+  onDelete,
+  onDiscount,
+  onNote,
+  editable,
+  busy,
+}: {
+  item: OrderItem;
+  currency: string;
+  isSelected: boolean;
+  onSelect: () => void;
+  onQuantityChange: (delta: number) => void;
+  onDelete: () => void;
+  onDiscount: () => void;
+  onNote: () => void;
+  editable: boolean;
+  busy: boolean;
+}) {
+  const lineTotal = item.unitPriceCents * item.quantity;
+  const discountAmount = item.discountPercent ? Math.round(lineTotal * item.discountPercent / 100) : 0;
+  const finalTotal = lineTotal - discountAmount;
+
+  return (
+    <div
+      onClick={onSelect}
+      className={cn(
+        "p-4 cursor-pointer transition-all border-l-4",
+        isSelected
+          ? "bg-primary-500/10 border-l-primary-500"
+          : "border-l-transparent hover:bg-[var(--pos-bg)]"
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-[15px] mb-1">{item.productName}</div>
+          <div className="flex items-center gap-2 text-sm text-[var(--pos-muted)]">
+            <span>{formatMoney({ cents: item.unitPriceCents, currency })} x {item.quantity}</span>
+            {item.discountPercent && item.discountPercent > 0 && (
+              <span className="text-amber-500 font-medium">-{item.discountPercent}%</span>
+            )}
+          </div>
+          {item.notes && (
+            <div className="flex items-center gap-1 mt-1 text-xs text-blue-500">
+              <StickyNote className="w-3 h-3" />
+              {item.notes}
+            </div>
+          )}
+        </div>
+        <div className="text-right">
+          {discountAmount > 0 && (
+            <div className="text-xs text-[var(--pos-muted)] line-through">
+              {formatMoney({ cents: lineTotal, currency })}
+            </div>
+          )}
+          <div className="font-bold text-[15px]">
+            {formatMoney({ cents: finalTotal, currency })}
+          </div>
+        </div>
+      </div>
+
+      {/* Actions when selected */}
+      {isSelected && editable && (
+        <div className="mt-3 pt-3 border-t border-[color:var(--pos-border)] flex items-center gap-2">
+          <div className="flex items-center rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] overflow-hidden">
+            <button
+              onClick={(e) => { e.stopPropagation(); onQuantityChange(-1); }}
+              disabled={busy}
+              className="p-2.5 hover:bg-[var(--pos-border)] disabled:opacity-40 transition-colors"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
+            <div className="px-4 font-bold text-sm min-w-[48px] text-center">{item.quantity}</div>
+            <button
+              onClick={(e) => { e.stopPropagation(); onQuantityChange(1); }}
+              disabled={busy}
+              className="p-2.5 hover:bg-[var(--pos-border)] disabled:opacity-40 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+
+          <button
+            onClick={(e) => { e.stopPropagation(); onDiscount(); }}
+            className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors"
+            title="Discount"
+          >
+            <Percent className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={(e) => { e.stopPropagation(); onNote(); }}
+            className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-colors"
+            title="Note"
+          >
+            <StickyNote className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            disabled={busy}
+            className="p-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors disabled:opacity-40 ml-auto"
+            title="Remove"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// PRODUCT CARD
+// ============================================================================
+
+function ProductCard({
+  product,
+  categoryColor,
+  onClick,
+  disabled,
+}: {
+  product: CatalogProduct;
+  categoryColor: { bg: string; text: string; light: string; border: string };
+  onClick: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "rounded-2xl p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-wait shadow-md hover:shadow-lg",
+        categoryColor.bg,
+        "text-white relative overflow-hidden"
+      )}
+    >
+      <div className="absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 rounded-full bg-white/10" />
+      <div className="relative">
+        <div className="font-semibold text-sm line-clamp-2 mb-3 min-h-[40px]">
+          {product.name}
+        </div>
+        <div className="text-xl font-bold">
+          {formatMoney({ cents: product.priceCents, currency: product.currency })}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// ============================================================================
+// EMPTY PRODUCT STATE
+// ============================================================================
+
+function EmptyProductState({
+  onAddProduct,
+}: {
+  onAddProduct: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+      <div className="w-24 h-24 rounded-full bg-primary-500/10 flex items-center justify-center mb-6">
+        <Package className="w-12 h-12 text-primary-500" />
+      </div>
+      <h3 className="font-bold text-xl mb-2">No Products Yet</h3>
+      <p className="text-[var(--pos-muted)] max-w-sm mb-6">
+        Add products to your catalog to start selling. You can also add custom items directly to orders.
+      </p>
+      <button
+        onClick={onAddProduct}
+        className="px-6 py-3 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-2 hover:bg-primary-600 transition-colors"
+      >
+        <Plus className="w-5 h-5" />
+        Add Custom Item
+      </button>
+    </div>
+  );
+}
+
+// ============================================================================
+// MAIN CHECKOUT VIEW
+// ============================================================================
 
 export function CheckoutView({
   tenant,
@@ -129,18 +1599,38 @@ export function CheckoutView({
   catalog: { categories: CatalogCategory[]; uncategorized: CatalogProduct[] };
   initialOpenOrders: OpenOrderSummary[];
 }) {
+  // State
+  const [viewMode, setViewMode] = useState<ViewMode>("floor");
   const [activeFloorId, setActiveFloorId] = useState<string>(() => floors[0]?.id ?? "");
-  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [activeOrder, setActiveOrder] = useState<OrderDetail | null>(null);
   const [openOrders, setOpenOrders] = useState<OpenOrderSummary[]>(initialOpenOrders);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
-  const [payOpen, setPayOpen] = useState(false);
-  const [payProvider, setPayProvider] = useState<PayProvider>("CASH");
-  const [cashReceived, setCashReceived] = useState<string>("");
   const [menuQuery, setMenuQuery] = useState("");
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
+  // Modal states
+  const [customerModalOpen, setCustomerModalOpen] = useState(false);
+  const [createCustomerModalOpen, setCreateCustomerModalOpen] = useState(false);
+  const [discountModalOpen, setDiscountModalOpen] = useState(false);
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+  const [heldOrdersOpen, setHeldOrdersOpen] = useState(false);
+  const [addCustomProductOpen, setAddCustomProductOpen] = useState(false);
+  const [discountTarget, setDiscountTarget] = useState<"order" | "item">("order");
+  const [noteTarget, setNoteTarget] = useState<"order" | "item">("order");
+
+  // Order state
+  const [orderType, setOrderType] = useState<OrderType>("DINE_IN");
+  const [heldOrders, setHeldOrders] = useState<HeldOrder[]>([]);
+
+  // Refs
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Computed values
   const activeFloor = useMemo(
     () => floors.find((f) => f.id === activeFloorId) ?? floors[0],
     [floors, activeFloorId]
@@ -156,7 +1646,7 @@ export function CheckoutView({
 
   const paidCents = useMemo(() => {
     if (!activeOrder) return 0;
-    return activeOrder.payments
+    return (activeOrder.payments || [])
       .filter((p) => p.status === "CAPTURED")
       .reduce((sum, p) => sum + p.amountCents, 0);
   }, [activeOrder]);
@@ -177,17 +1667,35 @@ export function CheckoutView({
     return outstandingCents > 0;
   }, [activeOrder, outstandingCents]);
 
-  const filteredCatalog = useMemo(() => {
-    const q = menuQuery.trim().toLowerCase();
-    if (!q) return catalog;
-    return {
-      categories: catalog.categories
-        .map((c) => ({ ...c, products: c.products.filter((p) => p.name.toLowerCase().includes(q)) }))
-        .filter((c) => c.products.length > 0),
-      uncategorized: catalog.uncategorized.filter((p) => p.name.toLowerCase().includes(q)),
-    };
-  }, [catalog, menuQuery]);
+  const selectedItem = useMemo(() => {
+    if (!selectedItemId || !activeOrder) return null;
+    return activeOrder.items.find((i) => i.id === selectedItemId) ?? null;
+  }, [selectedItemId, activeOrder]);
 
+  const filteredProducts = useMemo(() => {
+    const q = menuQuery.trim().toLowerCase();
+    let products: CatalogProduct[] = [];
+
+    if (activeCategoryId) {
+      const category = catalog.categories.find((c) => c.id === activeCategoryId);
+      products = category?.products ?? [];
+    } else {
+      products = [
+        ...catalog.categories.flatMap((c) => c.products),
+        ...catalog.uncategorized,
+      ];
+    }
+
+    if (q) {
+      products = products.filter((p) => p.name.toLowerCase().includes(q));
+    }
+
+    return products;
+  }, [catalog, menuQuery, activeCategoryId]);
+
+  const hasProducts = catalog.categories.some(c => c.products.length > 0) || catalog.uncategorized.length > 0;
+
+  // API functions
   const refreshOpenOrders = useCallback(async () => {
     try {
       const response = await fetch(
@@ -225,17 +1733,57 @@ export function CheckoutView({
     };
 
     tick();
-    const interval = window.setInterval(tick, 4500);
+    const interval = window.setInterval(tick, 5000);
     return () => {
       mounted = false;
       window.clearInterval(interval);
     };
   }, [activeOrder?.id, refreshOpenOrders, refreshOrder]);
 
+  useEffect(() => {
+    if (toast) {
+      const timeout = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [toast]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (e.key === "Escape") {
+        if (paymentModalOpen) setPaymentModalOpen(false);
+        else if (discountModalOpen) setDiscountModalOpen(false);
+        else if (noteModalOpen) setNoteModalOpen(false);
+        else if (customerModalOpen) setCustomerModalOpen(false);
+        else if (viewMode === "products") closeOrder();
+      }
+
+      if (e.key === "/" && !paymentModalOpen) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+
+      if (e.key === "p" && e.ctrlKey && canPay) {
+        e.preventDefault();
+        setPaymentModalOpen(true);
+      }
+
+      if (e.key === "k" && e.ctrlKey && canSendToKitchen) {
+        e.preventDefault();
+        sendToKitchen();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [viewMode, paymentModalOpen, discountModalOpen, noteModalOpen, customerModalOpen, canPay, canSendToKitchen]);
+
+  // Order operations
   const openTable = async (tableId: string) => {
     setError(null);
     setToast(null);
-    setSelectedTableId(tableId);
     setBusyKey(`table:${tableId}`);
 
     try {
@@ -259,6 +1807,7 @@ export function CheckoutView({
       if (data?.order) setActiveOrder(data.order);
       else await refreshOrder(id);
 
+      setViewMode("products");
       await refreshOpenOrders();
     } finally {
       setBusyKey(null);
@@ -268,7 +1817,6 @@ export function CheckoutView({
   const startQuickSale = async () => {
     setError(null);
     setToast(null);
-    setSelectedTableId(null);
     setBusyKey("quick-sale");
 
     try {
@@ -283,6 +1831,7 @@ export function CheckoutView({
         return;
       }
       setActiveOrder(data.order);
+      setViewMode("products");
       await refreshOpenOrders();
     } finally {
       setBusyKey(null);
@@ -296,7 +1845,6 @@ export function CheckoutView({
     }
 
     setError(null);
-    setToast(null);
     setBusyKey(`add:${productId}`);
     try {
       const response = await fetch(`/api/pos/tenants/${tenant.slug}/orders/${activeOrder.id}/items`, {
@@ -310,6 +1858,33 @@ export function CheckoutView({
         return;
       }
       setActiveOrder(data.order);
+      await refreshOpenOrders();
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const addCustomProduct = async (name: string, priceCents: number) => {
+    if (!activeOrder?.id) {
+      setError("Select a table or start a quick sale first.");
+      return;
+    }
+
+    setError(null);
+    setBusyKey("add-custom");
+    try {
+      const response = await fetch(`/api/pos/tenants/${tenant.slug}/orders/${activeOrder.id}/items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productName: name, unitPriceCents: priceCents, quantity: 1 }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data?.success) {
+        setError(data?.error || "Unable to add custom item");
+        return;
+      }
+      setActiveOrder(data.order);
+      setToast(`Added: ${name}`);
       await refreshOpenOrders();
     } finally {
       setBusyKey(null);
@@ -340,7 +1915,6 @@ export function CheckoutView({
   const sendToKitchen = async () => {
     if (!activeOrder?.id) return;
     setError(null);
-    setToast(null);
     setBusyKey("send");
 
     try {
@@ -363,7 +1937,6 @@ export function CheckoutView({
   const cancelOrder = async () => {
     if (!activeOrder?.id) return;
     setError(null);
-    setToast(null);
     setBusyKey("cancel");
 
     try {
@@ -376,39 +1949,58 @@ export function CheckoutView({
         return;
       }
       setActiveOrder(null);
-      setSelectedTableId(null);
-      setToast("Order cancelled.");
+      setViewMode("floor");
+      setToast("Order cancelled");
       await refreshOpenOrders();
     } finally {
       setBusyKey(null);
     }
   };
 
-  const openPay = () => {
-    if (!activeOrder) return;
-    setPayProvider("CASH");
-    setCashReceived((outstandingCents / 100).toFixed(2));
-    setPayOpen(true);
+  const holdOrder = () => {
+    if (!activeOrder || activeOrder.items.filter(i => i.status !== "VOID").length === 0) return;
+
+    const held: HeldOrder = {
+      id: generateOrderId(),
+      name: activeOrder.table ? `Table ${activeOrder.table.name}` : `Order #${activeOrder.orderNumber.slice(-4)}`,
+      items: activeOrder.items.filter(i => i.status !== "VOID"),
+      customer: activeOrder.customer,
+      orderType,
+      heldAt: new Date().toISOString(),
+      totalCents: activeOrder.totalCents,
+    };
+
+    setHeldOrders(prev => [...prev, held]);
+    setActiveOrder(null);
+    setViewMode("floor");
+    setToast("Order held");
   };
 
-  const confirmPay = async () => {
+  const recallOrder = (held: HeldOrder) => {
+    // In a real app, this would restore the order
+    setHeldOrders(prev => prev.filter(o => o.id !== held.id));
+    setToast(`Recalled: ${held.name}`);
+    setHeldOrdersOpen(false);
+  };
+
+  const closeOrder = () => {
+    setActiveOrder(null);
+    setSelectedItemId(null);
+    setViewMode("floor");
+    setMenuQuery("");
+    setActiveCategoryId(null);
+  };
+
+  const handlePayment = async (provider: PayProvider, amountCents: number) => {
     if (!activeOrder?.id || !canPay) return;
     setError(null);
-    setToast(null);
     setBusyKey("pay");
 
     try {
-      const requestedCents =
-        payProvider === "CASH" ? safeParseMoneyToCents(cashReceived) ?? outstandingCents : outstandingCents;
-      if (!requestedCents || requestedCents < 1) {
-        setError("Enter a valid amount.");
-        return;
-      }
-
       const response = await fetch(`/api/pos/tenants/${tenant.slug}/orders/${activeOrder.id}/pay`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider: payProvider, amountCents: requestedCents }),
+        body: JSON.stringify({ provider, amountCents }),
       });
       const data = await response.json();
       if (!response.ok || !data?.success || !data?.order) {
@@ -418,557 +2010,674 @@ export function CheckoutView({
 
       setActiveOrder(data.order);
       const changeDueCents = typeof data.changeDueCents === "number" ? data.changeDueCents : 0;
-      setToast(
-        changeDueCents > 0
-          ? `Payment captured! Change due: ${formatMoney({ cents: changeDueCents, currency: data.order.currency })}`
-          : "Payment captured!"
-      );
-      setPayOpen(false);
+
+      if (data.order.status === "PAID") {
+        setPaymentModalOpen(false);
+        setReceiptModalOpen(true);
+        setToast(
+          changeDueCents > 0
+            ? `Payment complete! Change: ${formatMoney({ cents: changeDueCents, currency: data.order.currency })}`
+            : "Payment complete!"
+        );
+      } else {
+        setToast(
+          changeDueCents > 0
+            ? `Partial payment! Change: ${formatMoney({ cents: changeDueCents, currency: data.order.currency })}`
+            : "Partial payment received"
+        );
+      }
       await refreshOpenOrders();
     } finally {
       setBusyKey(null);
     }
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Point of Sale</h1>
-          <p className="text-sm text-[var(--pos-muted)] mt-1">
-            Manage orders for <span className="font-medium text-[var(--pos-text)]">{tenant.name}</span>
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={startQuickSale}
-            disabled={busyKey === "quick-sale"}
-            className="px-5 py-2.5 rounded-xl bg-[var(--pos-accent)] text-white font-semibold text-sm inline-flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-60 shadow-lg shadow-[var(--pos-accent)]/20"
-          >
-            <Plus className="w-4 h-4" />
-            Quick Sale
-          </button>
-          <button
-            type="button"
-            onClick={refreshOpenOrders}
-            className="p-2.5 rounded-xl border border-[color:var(--pos-border)] hover:bg-[var(--pos-border)] transition-colors"
-            title="Refresh"
-          >
-            <RefreshCw className="w-5 h-5 text-[var(--pos-muted)]" />
-          </button>
-        </div>
-      </div>
+  const getItemTotal = (item: OrderItem) => item.unitPriceCents * item.quantity;
 
-      {/* Notifications */}
-      {(error || toast) && (
-        <div
-          className={cn(
-            "rounded-xl border p-4 text-sm flex items-center gap-3",
-            error
-              ? "bg-red-500/10 border-red-500/20 text-red-600"
-              : "bg-emerald-500/10 border-emerald-500/20 text-emerald-600"
-          )}
-        >
-          {error ? <X className="w-5 h-5 flex-shrink-0" /> : <CheckCircle2 className="w-5 h-5 flex-shrink-0" />}
-          {error || toast}
+  return (
+    <div className="h-[calc(100vh-80px)] flex flex-col overflow-hidden">
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-xl bg-primary-500 text-white font-medium shadow-2xl animate-in fade-in slide-in-from-top-2 flex items-center gap-2">
+          <CheckCircle2 className="w-5 h-5" />
+          {toast}
         </div>
       )}
 
-      <div className="grid xl:grid-cols-12 gap-6">
-        {/* Floor plan */}
-        <PosCard className="xl:col-span-5">
-          <PosCardHeader>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                  <Utensils className="w-5 h-5 text-blue-500" />
-                </div>
-                <div>
-                  <div className="font-semibold">Floor Plan</div>
-                  <div className="text-xs text-[var(--pos-muted)]">Select a table</div>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {floors.map((floor) => (
-                  <button
-                    key={floor.id}
-                    type="button"
-                    onClick={() => setActiveFloorId(floor.id)}
-                    className={cn(
-                      "px-4 py-2 rounded-xl text-sm font-medium transition-all",
-                      floor.id === activeFloor?.id
-                        ? "bg-[var(--pos-accent)] text-white shadow-lg shadow-[var(--pos-accent)]/20"
-                        : "border border-[color:var(--pos-border)] hover:bg-[var(--pos-border)] text-[var(--pos-muted)]"
+      {/* Error Notification */}
+      {error && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-xl bg-red-500 text-white font-medium shadow-2xl flex items-center gap-2">
+          <AlertCircle className="w-5 h-5" />
+          {error}
+          <button onClick={() => setError(null)} className="ml-2 hover:opacity-70">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      <div className="flex-1 flex overflow-hidden">
+        {/* ================================================================ */}
+        {/* LEFT SIDE - Categories Sidebar (Odoo style) */}
+        {/* ================================================================ */}
+        {viewMode === "products" && (
+          <div className="w-20 flex-shrink-0 bg-[var(--pos-panel-solid)] border-r border-[color:var(--pos-border)] flex flex-col py-3 overflow-y-auto">
+            <button
+              onClick={() => setActiveCategoryId(null)}
+              className={cn(
+                "mx-2 mb-2 p-3 rounded-xl flex flex-col items-center gap-1 transition-all",
+                !activeCategoryId
+                  ? "bg-primary-500 text-white shadow-lg"
+                  : "hover:bg-[var(--pos-bg)]"
+              )}
+            >
+              <LayoutGrid className="w-6 h-6" />
+              <span className="text-[10px] font-medium">All</span>
+            </button>
+
+            {catalog.categories.map((category, index) => {
+              const colors = getCategoryColor(index);
+              const Icon = getCategoryIcon(index);
+              const isActive = activeCategoryId === category.id;
+              return (
+                <button
+                  key={category.id}
+                  onClick={() => setActiveCategoryId(category.id)}
+                  className={cn(
+                    "mx-2 mb-2 p-3 rounded-xl flex flex-col items-center gap-1 transition-all",
+                    isActive
+                      ? `${colors.bg} text-white shadow-lg`
+                      : `hover:${colors.light} ${colors.text}`
+                  )}
+                >
+                  <Icon className="w-6 h-6" />
+                  <span className="text-[10px] font-medium text-center line-clamp-2 leading-tight">
+                    {category.name}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ================================================================ */}
+        {/* MAIN CONTENT AREA */}
+        {/* ================================================================ */}
+        <div className="flex-1 flex flex-col bg-[var(--pos-bg)] overflow-hidden">
+          {viewMode === "floor" ? (
+            <>
+              {/* Floor View Header */}
+              <div className="p-4 border-b border-[color:var(--pos-border)] bg-[var(--pos-panel-solid)]">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center">
+                      <Store className="w-6 h-6 text-primary-500" />
+                    </div>
+                    <div>
+                      <h1 className="font-bold text-xl">{tenant.name}</h1>
+                      <p className="text-sm text-[var(--pos-muted)]">Select a table or start quick sale</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {heldOrders.length > 0 && (
+                      <button
+                        onClick={() => setHeldOrdersOpen(true)}
+                        className="px-4 py-2.5 rounded-xl bg-amber-500/10 text-amber-500 font-medium flex items-center gap-2 hover:bg-amber-500/20 transition-colors"
+                      >
+                        <Pause className="w-4 h-4" />
+                        {heldOrders.length} Held
+                      </button>
                     )}
-                  >
-                    {floor.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </PosCardHeader>
-          <PosCardContent>
-            <div className="rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] overflow-auto">
-              <div className="relative w-[800px] h-[520px] p-4">
-                {activeFloor?.tables.map((table) => {
-                  const order = openOrderByTable.get(table.id);
-                  const selected = selectedTableId === table.id;
-                  const isBusy = busyKey === `table:${table.id}`;
 
-                  return (
+                    {floors.length > 1 && (
+                      <div className="flex items-center bg-[var(--pos-bg)] rounded-xl p-1 border border-[color:var(--pos-border)]">
+                        {floors.map((floor) => (
+                          <button
+                            key={floor.id}
+                            onClick={() => setActiveFloorId(floor.id)}
+                            className={cn(
+                              "px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                              floor.id === activeFloor?.id
+                                ? "bg-primary-500 text-white shadow"
+                                : "hover:bg-[var(--pos-border)]"
+                            )}
+                          >
+                            {floor.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
                     <button
-                      key={table.id}
-                      type="button"
-                      disabled={isBusy}
-                      onClick={() => openTable(table.id)}
-                      className={cn(
-                        "absolute border-2 shadow-lg text-left transition-all focus:outline-none",
-                        "focus:ring-2 focus:ring-[var(--pos-accent)] focus:ring-offset-2 disabled:opacity-70 disabled:cursor-wait",
-                        tableSurface(order?.status),
-                        table.shape === "ROUND" ? "rounded-full" : "rounded-2xl",
-                        selected ? "ring-2 ring-[var(--pos-accent)] ring-offset-2" : ""
-                      )}
-                      style={{
-                        left: table.x,
-                        top: table.y,
-                        width: table.width,
-                        height: table.height,
-                      }}
+                      onClick={startQuickSale}
+                      disabled={busyKey === "quick-sale"}
+                      className="px-6 py-3 rounded-xl bg-primary-500 text-white font-semibold text-sm flex items-center gap-2 hover:bg-primary-600 transition-colors disabled:opacity-50 shadow-lg"
                     >
-                      <div className="h-full w-full p-3 flex flex-col justify-between">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="font-bold text-sm truncate">{table.name}</div>
-                            <div className="text-[11px] text-[var(--pos-muted)]">{table.capacity} seats</div>
-                          </div>
-                          {order && <StatusBadge status={order.status} />}
-                        </div>
+                      <Zap className="w-5 h-5" />
+                      Quick Sale
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-                        {order ? (
-                          <div className="flex items-end justify-between gap-2">
-                            <div className="text-[11px] text-[var(--pos-muted)] font-mono truncate">
-                              #{order.orderNumber.slice(-4)}
-                            </div>
-                            <div className="text-sm font-bold text-[var(--pos-accent)]">
+              {/* Tables Grid */}
+              <div className="flex-1 overflow-auto p-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                  {activeFloor?.tables.map((table) => {
+                    const order = openOrderByTable.get(table.id);
+                    const status = getTableStatus(order?.status);
+                    const isBusy = busyKey === `table:${table.id}`;
+                    const hasOrder = !!order;
+
+                    return (
+                      <button
+                        key={table.id}
+                        onClick={() => openTable(table.id)}
+                        disabled={isBusy}
+                        className={cn(
+                          "aspect-square rounded-2xl p-4 flex flex-col items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-wait shadow-lg border-2 relative overflow-hidden",
+                          hasOrder ? status.bg : "bg-[var(--pos-panel-solid)]",
+                          hasOrder ? status.border : "border-[color:var(--pos-border)]",
+                          hasOrder ? "text-white" : "text-[var(--pos-text)]"
+                        )}
+                      >
+                        {hasOrder && (
+                          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
+                        )}
+                        <div className="relative z-10 flex flex-col items-center">
+                          <div className="text-3xl font-bold mb-1">{table.name}</div>
+                          <div className={cn("text-sm mb-2", hasOrder ? "opacity-80" : "text-[var(--pos-muted)]")}>
+                            {table.capacity} seats
+                          </div>
+                          {order && (
+                            <div className="text-lg font-bold">
                               {formatMoney({ cents: order.totalCents, currency: order.currency })}
                             </div>
-                          </div>
-                        ) : (
-                          <div className="text-[11px] text-[var(--pos-muted)]">Available</div>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </PosCardContent>
-        </PosCard>
-
-        {/* Order panel */}
-        <PosCard className="xl:col-span-3">
-          <PosCardHeader>
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                  <ShoppingCart className="w-5 h-5 text-purple-500" />
-                </div>
-                <div>
-                  <div className="font-semibold">Current Order</div>
-                  <div className="text-xs text-[var(--pos-muted)]">
-                    {activeOrder?.table
-                      ? `Table ${activeOrder.table.name}`
-                      : activeOrder
-                        ? "Quick sale"
-                        : "No order"}
-                  </div>
-                </div>
-              </div>
-              {activeOrder && <StatusBadge status={activeOrder.status} />}
-            </div>
-          </PosCardHeader>
-          <PosCardContent>
-            {!activeOrder ? (
-              <div className="rounded-xl border border-dashed border-[color:var(--pos-border)] bg-[var(--pos-bg)] p-6 text-center">
-                <ShoppingCart className="w-12 h-12 mx-auto text-[var(--pos-muted)] mb-4" />
-                <div className="font-semibold mb-1">No Active Order</div>
-                <div className="text-sm text-[var(--pos-muted)] mb-4">
-                  Select a table or start a quick sale
-                </div>
-                <button
-                  type="button"
-                  onClick={startQuickSale}
-                  disabled={busyKey === "quick-sale"}
-                  className="px-5 py-2.5 rounded-xl bg-[var(--pos-accent)] text-white font-semibold text-sm inline-flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-60"
-                >
-                  <Plus className="w-4 h-4" />
-                  Start Quick Sale
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Order Info */}
-                <div className="rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] p-3 flex items-center justify-between">
-                  <div className="text-xs text-[var(--pos-muted)]">Order #{activeOrder.orderNumber.slice(-6)}</div>
-                  <div className="text-xs font-medium">{activeOrder.currency}</div>
-                </div>
-
-                {/* Items List */}
-                <div className="rounded-xl border border-[color:var(--pos-border)] overflow-hidden">
-                  <div className="p-3 border-b border-[color:var(--pos-border)] bg-[var(--pos-bg)] flex items-center justify-between">
-                    <div className="text-sm font-semibold">Items</div>
-                    <div className="text-xs text-[var(--pos-muted)] bg-[var(--pos-border)] px-2 py-0.5 rounded-full">
-                      {activeOrder.items.length}
-                    </div>
-                  </div>
-                  <div className="max-h-[300px] overflow-auto">
-                    {activeOrder.items.map((item) => {
-                      const editable = item.status === "NEW";
-                      const lineTotal = item.unitPriceCents * item.quantity;
-                      return (
-                        <div
-                          key={item.id}
-                          className="p-3 border-b border-[color:var(--pos-border)] last:border-b-0 hover:bg-[var(--pos-bg)] transition-colors"
-                        >
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <div className="min-w-0 flex-1">
-                              <div className="font-medium text-sm truncate">{item.productName}</div>
-                              <div className="flex items-center gap-2 mt-1">
-                                <StatusBadge status={item.status} />
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="font-semibold text-sm">
-                                {formatMoney({ cents: lineTotal, currency: activeOrder.currency })}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="inline-flex items-center rounded-lg border border-[color:var(--pos-border)] overflow-hidden">
-                              <button
-                                type="button"
-                                disabled={!editable || busyKey === `item:${item.id}` || item.quantity <= 1}
-                                onClick={() => patchItem(item.id, { quantity: item.quantity - 1 })}
-                                className="p-1.5 hover:bg-[var(--pos-border)] disabled:opacity-40 transition-colors"
-                              >
-                                <Minus className="w-4 h-4" />
-                              </button>
-                              <div className="px-3 text-sm font-semibold min-w-[32px] text-center">
-                                {item.quantity}
-                              </div>
-                              <button
-                                type="button"
-                                disabled={!editable || busyKey === `item:${item.id}`}
-                                onClick={() => patchItem(item.id, { quantity: item.quantity + 1 })}
-                                className="p-1.5 hover:bg-[var(--pos-border)] disabled:opacity-40 transition-colors"
-                              >
-                                <Plus className="w-4 h-4" />
-                              </button>
-                            </div>
-
-                            <button
-                              type="button"
-                              disabled={busyKey === `item:${item.id}`}
-                              onClick={() => patchItem(item.id, { status: "VOID" })}
-                              className="p-1.5 rounded-lg border border-red-500/20 text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-40"
-                              title="Remove item"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
+                          )}
+                          <div className={cn(
+                            "text-xs font-semibold mt-2 px-3 py-1 rounded-full",
+                            hasOrder ? "bg-black/20" : "bg-[var(--pos-bg)]"
+                          )}>
+                            {status.label}
                           </div>
                         </div>
-                      );
-                    })}
+                      </button>
+                    );
+                  })}
+                </div>
 
-                    {activeOrder.items.length === 0 && (
-                      <div className="p-6 text-center text-sm text-[var(--pos-muted)]">
-                        Add items from the menu
-                      </div>
+                {(!activeFloor?.tables || activeFloor.tables.length === 0) && (
+                  <div className="flex flex-col items-center justify-center h-full text-[var(--pos-muted)]">
+                    <div className="w-24 h-24 rounded-full bg-primary-500/10 flex items-center justify-center mb-6">
+                      <Grid3X3 className="w-12 h-12 text-primary-500" />
+                    </div>
+                    <p className="text-xl font-semibold mb-2">No Tables Configured</p>
+                    <p className="text-sm mb-6">Add tables in settings or use Quick Sale mode</p>
+                    <button
+                      onClick={startQuickSale}
+                      disabled={busyKey === "quick-sale"}
+                      className="px-8 py-4 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-3 hover:bg-primary-600 transition-colors shadow-lg"
+                    >
+                      <Plus className="w-6 h-6" />
+                      Start Quick Sale
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Products View Header */}
+              <div className="p-4 border-b border-[color:var(--pos-border)] bg-[var(--pos-panel-solid)]">
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={closeOrder}
+                    className="p-3 rounded-xl border border-[color:var(--pos-border)] hover:bg-[var(--pos-border)] transition-colors"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--pos-muted)]" />
+                    <input
+                      ref={searchInputRef}
+                      value={menuQuery}
+                      onChange={(e) => setMenuQuery(e.target.value)}
+                      placeholder="Search products... (Press /)"
+                      className="w-full pl-12 pr-4 py-3 rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] focus:outline-none focus:ring-2 focus:ring-primary-500 text-lg"
+                    />
+                    {menuQuery && (
+                      <button
+                        onClick={() => setMenuQuery("")}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-[var(--pos-border)]"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     )}
                   </div>
-                </div>
 
-                {/* Totals */}
-                <div className="rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] p-4 space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-[var(--pos-muted)]">Subtotal</span>
-                    <span>{formatMoney({ cents: activeOrder.subtotalCents, currency: activeOrder.currency })}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-[var(--pos-muted)]">Tax</span>
-                    <span>{formatMoney({ cents: activeOrder.taxCents, currency: activeOrder.currency })}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-lg font-bold border-t border-[color:var(--pos-border)] pt-3 mt-3">
-                    <span>Total</span>
-                    <span className="text-[var(--pos-accent)]">
-                      {formatMoney({ cents: activeOrder.totalCents, currency: activeOrder.currency })}
-                    </span>
-                  </div>
-                  {paidCents > 0 && (
-                    <div className="flex items-center justify-between text-xs text-[var(--pos-muted)] pt-1">
-                      <span>Paid</span>
-                      <span>{formatMoney({ cents: paidCents, currency: activeOrder.currency })}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Action Buttons */}
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      disabled={!canSendToKitchen || busyKey === "send"}
-                      onClick={sendToKitchen}
-                      className="px-4 py-3 rounded-xl bg-amber-500 text-white font-semibold text-sm inline-flex items-center justify-center gap-2 hover:bg-amber-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <Send className="w-4 h-4" />
-                      Kitchen
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={!canPay || busyKey === "pay"}
-                      onClick={openPay}
-                      className="px-4 py-3 rounded-xl bg-emerald-500 text-white font-semibold text-sm inline-flex items-center justify-center gap-2 hover:bg-emerald-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <CreditCard className="w-4 h-4" />
-                      Payment
-                    </button>
-                  </div>
+                  <OrderTypeSelector
+                    selected={orderType}
+                    onChange={setOrderType}
+                    disabled={activeOrder?.status !== "OPEN"}
+                  />
 
                   <button
-                    type="button"
-                    disabled={activeOrder.status === "PAID" || busyKey === "cancel"}
-                    onClick={cancelOrder}
-                    className="w-full px-4 py-2.5 rounded-xl border border-red-500/30 text-red-500 font-medium text-sm inline-flex items-center justify-center gap-2 hover:bg-red-500/10 transition-colors disabled:opacity-40"
+                    onClick={() => setAddCustomProductOpen(true)}
+                    className="px-4 py-3 rounded-xl bg-secondary-500/10 text-secondary-500 font-medium flex items-center gap-2 hover:bg-secondary-500/20 transition-colors"
                   >
-                    <Ban className="w-4 h-4" />
-                    Cancel Order
+                    <Plus className="w-5 h-5" />
+                    <span className="hidden lg:inline">Custom Item</span>
                   </button>
                 </div>
               </div>
-            )}
-          </PosCardContent>
-        </PosCard>
 
-        {/* Menu */}
-        <PosCard className="xl:col-span-4">
-          <PosCardHeader>
-            <div className="flex items-center justify-between gap-3">
+              {/* Products Grid */}
+              <div className="flex-1 overflow-auto p-4">
+                {!hasProducts && filteredProducts.length === 0 ? (
+                  <EmptyProductState onAddProduct={() => setAddCustomProductOpen(true)} />
+                ) : filteredProducts.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-[50vh] text-[var(--pos-muted)]">
+                    <Search className="w-16 h-16 mb-4 opacity-50" />
+                    <p className="text-lg font-medium">No products found</p>
+                    <p className="text-sm mt-1">Try a different search or category</p>
+                    <button
+                      onClick={() => setAddCustomProductOpen(true)}
+                      className="mt-4 px-4 py-2 rounded-xl bg-primary-500 text-white font-medium hover:bg-primary-600"
+                    >
+                      Add Custom Item
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                    {filteredProducts.map((product) => {
+                      const categoryIndex = catalog.categories.findIndex(
+                        (c) => c.products.some((p) => p.id === product.id)
+                      );
+                      const colors = categoryIndex >= 0 ? getCategoryColor(categoryIndex) : CATEGORY_COLORS[0];
+                      const isBusy = busyKey === `add:${product.id}`;
+
+                      return (
+                        <ProductCard
+                          key={product.id}
+                          product={product}
+                          categoryColor={colors}
+                          onClick={() => addProduct(product.id)}
+                          disabled={isBusy || !activeOrder}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ================================================================ */}
+        {/* RIGHT PANEL - Order Summary (Odoo style) */}
+        {/* ================================================================ */}
+        <div className="w-[400px] flex-shrink-0 flex flex-col border-l border-[color:var(--pos-border)] bg-[var(--pos-panel-solid)]">
+          {/* Order Header */}
+          <div className="p-4 border-b border-[color:var(--pos-border)]">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                  <Utensils className="w-5 h-5 text-emerald-500" />
+                <div className={cn(
+                  "w-12 h-12 rounded-xl flex items-center justify-center",
+                  activeOrder ? "bg-primary-500/10" : "bg-[var(--pos-bg)]"
+                )}>
+                  <ShoppingCart className={cn("w-6 h-6", activeOrder ? "text-primary-500" : "text-[var(--pos-muted)]")} />
                 </div>
                 <div>
-                  <div className="font-semibold">Menu</div>
-                  <div className="text-xs text-[var(--pos-muted)]">Tap to add items</div>
+                  <div className="font-bold text-lg">
+                    {activeOrder?.table ? `Table ${activeOrder.table.name}` : activeOrder ? "Quick Sale" : "Current Order"}
+                  </div>
+                  <div className="text-sm text-[var(--pos-muted)]">
+                    {activeOrder ? (
+                      <span className="flex items-center gap-2" suppressHydrationWarning>
+                        <span>#{activeOrder.orderNumber.slice(-6)}</span>
+                        <span className="w-1 h-1 rounded-full bg-[var(--pos-muted)]" />
+                        <Clock className="w-3 h-3" />
+                        {formatTime(activeOrder.openedAt)}
+                      </span>
+                    ) : (
+                      "Select a table to start"
+                    )}
+                  </div>
+                </div>
+              </div>
+              {activeOrder && (
+                <span className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-semibold",
+                  activeOrder.status === "PAID" ? "bg-primary-500/10 text-primary-500" :
+                  activeOrder.status === "IN_KITCHEN" ? "bg-amber-500/10 text-amber-500" :
+                  activeOrder.status === "READY" ? "bg-blue-500/10 text-blue-500" :
+                  activeOrder.status === "CANCELLED" ? "bg-red-500/10 text-red-500" :
+                  "bg-secondary-500/10 text-secondary-500"
+                )}>
+                  {activeOrder.status.replace("_", " ")}
+                </span>
+              )}
+            </div>
+
+            {/* Customer Selection */}
+            {activeOrder && (
+              <button
+                onClick={() => setCustomerModalOpen(true)}
+                className="w-full p-3 rounded-xl border border-dashed border-[color:var(--pos-border)] hover:border-primary-500 hover:bg-primary-500/5 transition-all flex items-center gap-3"
+              >
+                <div className="w-10 h-10 rounded-full bg-[var(--pos-bg)] flex items-center justify-center">
+                  {activeOrder.customer ? (
+                    <span className="font-bold text-primary-500">
+                      {activeOrder.customer.name.charAt(0).toUpperCase()}
+                    </span>
+                  ) : (
+                    <User className="w-5 h-5 text-[var(--pos-muted)]" />
+                  )}
+                </div>
+                <div className="flex-1 text-left">
+                  <div className="font-medium text-sm">
+                    {activeOrder.customer?.name || "Guest"}
+                  </div>
+                  <div className="text-xs text-[var(--pos-muted)]">
+                    {activeOrder.customer?.email || "Tap to select customer"}
+                  </div>
+                </div>
+                <ChevronsUpDown className="w-4 h-4 text-[var(--pos-muted)]" />
+              </button>
+            )}
+          </div>
+
+          {/* Order Items */}
+          <div className="flex-1 overflow-auto">
+            {!activeOrder ? (
+              <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+                <div className="w-24 h-24 rounded-full bg-[var(--pos-bg)] flex items-center justify-center mb-6">
+                  <ShoppingCart className="w-12 h-12 text-[var(--pos-muted)]" />
+                </div>
+                <h3 className="font-bold text-xl mb-2">No Active Order</h3>
+                <p className="text-[var(--pos-muted)] mb-6">
+                  Select a table or start a quick sale
+                </p>
+                <button
+                  onClick={startQuickSale}
+                  disabled={busyKey === "quick-sale"}
+                  className="px-8 py-4 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-3 hover:bg-primary-600 transition-colors shadow-lg"
+                >
+                  <Plus className="w-6 h-6" />
+                  New Order
+                </button>
+              </div>
+            ) : activeOrder.items.filter((i) => i.status !== "VOID").length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+                <div className="w-20 h-20 rounded-full bg-[var(--pos-bg)] flex items-center justify-center mb-4">
+                  <Package className="w-10 h-10 text-[var(--pos-muted)]" />
+                </div>
+                <h3 className="font-semibold text-lg mb-2">Empty Order</h3>
+                <p className="text-sm text-[var(--pos-muted)]">
+                  Select products to add to the order
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-[color:var(--pos-border)]">
+                {activeOrder.items
+                  .filter((i) => i.status !== "VOID")
+                  .map((item) => (
+                    <OrderLineItem
+                      key={item.id}
+                      item={item}
+                      currency={activeOrder.currency}
+                      isSelected={selectedItemId === item.id}
+                      onSelect={() => setSelectedItemId(selectedItemId === item.id ? null : item.id)}
+                      onQuantityChange={(delta) => {
+                        const newQty = item.quantity + delta;
+                        if (newQty < 1) {
+                          patchItem(item.id, { status: "VOID" });
+                        } else {
+                          patchItem(item.id, { quantity: newQty });
+                        }
+                      }}
+                      onDelete={() => patchItem(item.id, { status: "VOID" })}
+                      onDiscount={() => {
+                        setDiscountTarget("item");
+                        setDiscountModalOpen(true);
+                      }}
+                      onNote={() => {
+                        setNoteTarget("item");
+                        setNoteModalOpen(true);
+                      }}
+                      editable={item.status === "NEW"}
+                      busy={busyKey === `item:${item.id}`}
+                    />
+                  ))}
+              </div>
+            )}
+          </div>
+
+          {/* Order Totals & Actions */}
+          {activeOrder && (
+            <div className="border-t border-[color:var(--pos-border)] bg-[var(--pos-panel-solid)]">
+              {/* Quick Actions */}
+              <div className="p-3 border-b border-[color:var(--pos-border)] grid grid-cols-4 gap-2">
+                <button
+                  onClick={() => {
+                    setDiscountTarget("order");
+                    setDiscountModalOpen(true);
+                  }}
+                  className="p-2.5 rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] hover:border-amber-500 hover:bg-amber-500/5 transition-all flex flex-col items-center gap-1"
+                >
+                  <Percent className="w-4 h-4 text-amber-500" />
+                  <span className="text-[10px] font-medium">Discount</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setNoteTarget("order");
+                    setNoteModalOpen(true);
+                  }}
+                  className="p-2.5 rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] hover:border-blue-500 hover:bg-blue-500/5 transition-all flex flex-col items-center gap-1"
+                >
+                  <StickyNote className="w-4 h-4 text-blue-500" />
+                  <span className="text-[10px] font-medium">Note</span>
+                </button>
+                <button
+                  onClick={() => setCustomerModalOpen(true)}
+                  className="p-2.5 rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] hover:border-purple-500 hover:bg-purple-500/5 transition-all flex flex-col items-center gap-1"
+                >
+                  <User className="w-4 h-4 text-purple-500" />
+                  <span className="text-[10px] font-medium">Customer</span>
+                </button>
+                <button
+                  onClick={holdOrder}
+                  disabled={activeOrder.items.filter(i => i.status !== "VOID").length === 0}
+                  className="p-2.5 rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] hover:border-secondary-500 hover:bg-secondary-500/5 transition-all flex flex-col items-center gap-1 disabled:opacity-50"
+                >
+                  <Pause className="w-4 h-4 text-secondary-500" />
+                  <span className="text-[10px] font-medium">Hold</span>
+                </button>
+              </div>
+
+              {/* Totals */}
+              <div className="p-4 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-[var(--pos-muted)]">Subtotal</span>
+                  <span className="font-medium">{formatMoney({ cents: activeOrder.subtotalCents, currency: activeOrder.currency })}</span>
+                </div>
+                {activeOrder.discountCents && activeOrder.discountCents > 0 && (
+                  <div className="flex items-center justify-between text-sm text-amber-500">
+                    <span>Discount</span>
+                    <span className="font-medium">-{formatMoney({ cents: activeOrder.discountCents, currency: activeOrder.currency })}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-[var(--pos-muted)]">Tax (5%)</span>
+                  <span className="font-medium">{formatMoney({ cents: activeOrder.taxCents, currency: activeOrder.currency })}</span>
+                </div>
+                <div className="flex items-center justify-between text-2xl font-bold pt-3 border-t border-[color:var(--pos-border)]">
+                  <span>Total</span>
+                  <span className="text-primary-500">
+                    {formatMoney({ cents: activeOrder.totalCents, currency: activeOrder.currency })}
+                  </span>
+                </div>
+                {paidCents > 0 && paidCents < activeOrder.totalCents && (
+                  <div className="flex items-center justify-between text-lg font-semibold text-primary-500">
+                    <span>Remaining</span>
+                    <span>{formatMoney({ cents: outstandingCents, currency: activeOrder.currency })}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="p-4 pt-0 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={sendToKitchen}
+                    disabled={!canSendToKitchen || busyKey === "send"}
+                    className="px-4 py-4 rounded-xl bg-amber-500 text-white font-bold flex items-center justify-center gap-2 hover:bg-amber-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
+                  >
+                    <Send className="w-5 h-5" />
+                    Kitchen
+                  </button>
+                  <button
+                    onClick={() => setPaymentModalOpen(true)}
+                    disabled={!canPay}
+                    className="px-4 py-4 rounded-xl bg-primary-500 text-white font-bold flex items-center justify-center gap-2 hover:bg-primary-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
+                  >
+                    <Banknote className="w-5 h-5" />
+                    Payment
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={cancelOrder}
+                    disabled={activeOrder.status === "PAID" || busyKey === "cancel"}
+                    className="px-4 py-3 rounded-xl border border-red-500/30 text-red-500 font-medium flex items-center justify-center gap-2 hover:bg-red-500/10 transition-colors disabled:opacity-40"
+                  >
+                    <Ban className="w-4 h-4" />
+                    Cancel
+                  </button>
+                  <button
+                    onClick={closeOrder}
+                    className="px-4 py-3 rounded-xl border border-[color:var(--pos-border)] font-medium flex items-center justify-center gap-2 hover:bg-[var(--pos-bg)] transition-colors"
+                  >
+                    <Receipt className="w-4 h-4" />
+                    Close
+                  </button>
                 </div>
               </div>
             </div>
-          </PosCardHeader>
-          <PosCardContent>
-            {/* Search */}
-            <div className="mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--pos-muted)]" />
-                <input
-                  value={menuQuery}
-                  onChange={(e) => setMenuQuery(e.target.value)}
-                  placeholder="Search menu..."
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--pos-accent)] focus:border-transparent transition-all"
-                />
-              </div>
-            </div>
-
-            {/* Products */}
-            <div className="space-y-5 max-h-[600px] overflow-auto pr-1">
-              {filteredCatalog.categories.map((category) => (
-                <div key={category.id}>
-                  <div className="flex items-center justify-between gap-3 mb-3">
-                    <div className="font-semibold text-sm">{category.name}</div>
-                    <div className="text-xs text-[var(--pos-muted)] bg-[var(--pos-border)] px-2 py-0.5 rounded-full">
-                      {category.products.length}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {category.products.map((product) => {
-                      const busy = busyKey === `add:${product.id}`;
-                      return (
-                        <button
-                          key={product.id}
-                          type="button"
-                          disabled={busy || !activeOrder}
-                          onClick={() => addProduct(product.id)}
-                          className={cn(
-                            "rounded-xl border border-[color:var(--pos-border)] p-3 text-left transition-all",
-                            activeOrder
-                              ? "hover:border-[var(--pos-accent)] hover:bg-[var(--pos-accent)]/5 cursor-pointer"
-                              : "opacity-50 cursor-not-allowed",
-                            "disabled:opacity-50"
-                          )}
-                        >
-                          <div className="font-medium text-sm truncate mb-2">{product.name}</div>
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="font-bold text-[var(--pos-accent)]">
-                              {formatMoney({ cents: product.priceCents, currency: product.currency })}
-                            </div>
-                            {activeOrder && (
-                              <div className="w-6 h-6 rounded-full bg-[var(--pos-accent)]/10 flex items-center justify-center">
-                                <Plus className="w-3 h-3 text-[var(--pos-accent)]" />
-                              </div>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-
-              {filteredCatalog.uncategorized.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between gap-3 mb-3">
-                    <div className="font-semibold text-sm">Other</div>
-                    <div className="text-xs text-[var(--pos-muted)]">{filteredCatalog.uncategorized.length}</div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {filteredCatalog.uncategorized.map((product) => {
-                      const busy = busyKey === `add:${product.id}`;
-                      return (
-                        <button
-                          key={product.id}
-                          type="button"
-                          disabled={busy || !activeOrder}
-                          onClick={() => addProduct(product.id)}
-                          className="rounded-xl border border-[color:var(--pos-border)] hover:border-[var(--pos-accent)] hover:bg-[var(--pos-accent)]/5 p-3 text-left transition-all disabled:opacity-50"
-                        >
-                          <div className="font-medium text-sm truncate mb-2">{product.name}</div>
-                          <div className="font-bold text-[var(--pos-accent)]">
-                            {formatMoney({ cents: product.priceCents, currency: product.currency })}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {filteredCatalog.categories.length === 0 && filteredCatalog.uncategorized.length === 0 && (
-                <div className="text-center py-8 text-[var(--pos-muted)]">
-                  <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <div className="text-sm">No products found</div>
-                </div>
-              )}
-            </div>
-          </PosCardContent>
-        </PosCard>
+          )}
+        </div>
       </div>
 
-      {/* Payment Modal */}
-      {payOpen && activeOrder && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-2xl border border-[color:var(--pos-border)] bg-[var(--pos-panel-solid)] overflow-hidden shadow-2xl">
-            <div className="p-5 border-b border-[color:var(--pos-border)] flex items-center justify-between">
-              <div>
-                <div className="font-semibold">Payment</div>
-                <div className="text-xs text-[var(--pos-muted)]">Order #{activeOrder.orderNumber.slice(-6)}</div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPayOpen(false)}
-                className="p-2 rounded-xl border border-[color:var(--pos-border)] hover:bg-[var(--pos-border)] transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {/* ================================================================ */}
+      {/* MODALS */}
+      {/* ================================================================ */}
 
-            <div className="p-5 space-y-5">
-              {/* Amount */}
-              <div className="rounded-xl bg-[var(--pos-accent)]/10 p-4 text-center">
-                <div className="text-sm text-[var(--pos-muted)] mb-1">Amount Due</div>
-                <div className="text-3xl font-bold text-[var(--pos-accent)]">
-                  {formatMoney({ cents: outstandingCents, currency: activeOrder.currency })}
-                </div>
-              </div>
+      <CustomerSelectorModal
+        isOpen={customerModalOpen}
+        onClose={() => setCustomerModalOpen(false)}
+        onSelect={(customer) => {
+          if (activeOrder) {
+            setActiveOrder({ ...activeOrder, customer });
+          }
+          setCustomerModalOpen(false);
+        }}
+        onCreateNew={() => {
+          setCustomerModalOpen(false);
+          setCreateCustomerModalOpen(true);
+        }}
+      />
 
-              {/* Payment Methods */}
-              <div className="grid grid-cols-2 gap-3">
-                {PAY_PROVIDERS.map((p) => {
-                  const Icon = p.icon;
-                  const isSelected = payProvider === p.key;
-                  return (
-                    <button
-                      key={p.key}
-                      type="button"
-                      onClick={() => setPayProvider(p.key)}
-                      className={cn(
-                        "rounded-xl border-2 p-4 text-left transition-all",
-                        isSelected
-                          ? "border-[var(--pos-accent)] bg-[var(--pos-accent)]/5"
-                          : "border-[color:var(--pos-border)] hover:border-[var(--pos-accent)]/50"
-                      )}
-                    >
-                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-2", p.color)}>
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <div className="font-semibold text-sm">{p.label}</div>
-                      <div className="text-xs text-[var(--pos-muted)]">{p.description}</div>
-                    </button>
-                  );
-                })}
-              </div>
+      <CreateCustomerModal
+        isOpen={createCustomerModalOpen}
+        onClose={() => setCreateCustomerModalOpen(false)}
+        onSave={(customer) => {
+          if (activeOrder) {
+            setActiveOrder({ ...activeOrder, customer });
+          }
+          setToast(`Customer ${customer.name} created`);
+        }}
+      />
 
-              {/* Cash Input */}
-              {payProvider === "CASH" && (
-                <div className="rounded-xl border border-[color:var(--pos-border)] p-4">
-                  <div className="text-sm font-medium mb-2">Cash Received</div>
-                  <input
-                    value={cashReceived}
-                    onChange={(e) => setCashReceived(e.target.value)}
-                    placeholder={(outstandingCents / 100).toFixed(2)}
-                    className="w-full px-4 py-3 rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] text-lg font-semibold text-center focus:outline-none focus:ring-2 focus:ring-[var(--pos-accent)]"
-                  />
-                  <div className="text-center text-sm text-[var(--pos-muted)] mt-2">
-                    Change:{" "}
-                    <span className="font-semibold text-[var(--pos-text)]">
-                      {(() => {
-                        const received = safeParseMoneyToCents(cashReceived) ?? outstandingCents;
-                        return formatMoney({
-                          cents: Math.max(0, received - outstandingCents),
-                          currency: activeOrder.currency,
-                        });
-                      })()}
-                    </span>
-                  </div>
-                </div>
-              )}
+      <DiscountModal
+        isOpen={discountModalOpen}
+        onClose={() => setDiscountModalOpen(false)}
+        onApply={(type, value) => {
+          if (discountTarget === "item" && selectedItem) {
+            const percent = type === "percent" ? value : Math.round((value / getItemTotal(selectedItem)) * 100);
+            patchItem(selectedItem.id, { discountPercent: percent });
+          } else {
+            setToast("Order discount applied");
+          }
+        }}
+        currentDiscount={discountTarget === "item" && selectedItem ? selectedItem.discountPercent : undefined}
+        itemName={discountTarget === "item" && selectedItem ? selectedItem.productName : undefined}
+        maxAmount={discountTarget === "item" && selectedItem ? getItemTotal(selectedItem) : activeOrder?.totalCents || 0}
+        currency={activeOrder?.currency || tenant.currency}
+      />
 
-              {/* Confirm Button */}
-              <button
-                type="button"
-                disabled={busyKey === "pay"}
-                onClick={confirmPay}
-                className="w-full px-4 py-4 rounded-xl bg-[var(--pos-accent)] text-white font-semibold text-base inline-flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-60 shadow-lg shadow-[var(--pos-accent)]/20"
-              >
-                {busyKey === "pay" ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-5 h-5" />
-                    Confirm Payment
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <NoteModal
+        isOpen={noteModalOpen}
+        onClose={() => setNoteModalOpen(false)}
+        onSave={(note) => {
+          if (noteTarget === "item" && selectedItem) {
+            patchItem(selectedItem.id, { notes: note || null });
+          } else if (activeOrder) {
+            setActiveOrder({ ...activeOrder, notes: note || null });
+            setToast("Note saved");
+          }
+        }}
+        currentNote={noteTarget === "item" && selectedItem ? selectedItem.notes : activeOrder?.notes}
+        title={noteTarget === "item" ? "Item Note" : "Order Note"}
+      />
+
+      <PaymentModal
+        isOpen={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        totalCents={activeOrder?.totalCents || 0}
+        paidCents={paidCents}
+        currency={activeOrder?.currency || tenant.currency}
+        onPay={handlePayment}
+        onComplete={() => {
+          setPaymentModalOpen(false);
+          setReceiptModalOpen(true);
+        }}
+      />
+
+      <ReceiptPreviewModal
+        isOpen={receiptModalOpen}
+        onClose={() => {
+          setReceiptModalOpen(false);
+          closeOrder();
+        }}
+        order={activeOrder}
+        tenantName={tenant.name}
+        onPrint={() => {
+          setToast("Receipt sent to printer");
+        }}
+        onNewOrder={() => {
+          setReceiptModalOpen(false);
+          closeOrder();
+          startQuickSale();
+        }}
+      />
+
+      <HeldOrdersPanel
+        isOpen={heldOrdersOpen}
+        onClose={() => setHeldOrdersOpen(false)}
+        heldOrders={heldOrders}
+        currency={tenant.currency}
+        onRecall={recallOrder}
+        onDelete={(id) => setHeldOrders(prev => prev.filter(o => o.id !== id))}
+      />
+
+      <AddCustomProductModal
+        isOpen={addCustomProductOpen}
+        onClose={() => setAddCustomProductOpen(false)}
+        onAdd={addCustomProduct}
+        currency={tenant.currency}
+      />
     </div>
   );
 }

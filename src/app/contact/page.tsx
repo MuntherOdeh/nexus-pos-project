@@ -11,7 +11,6 @@ import {
   Send,
   ArrowRight,
   CheckCircle,
-  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui";
 import { COMPANY_INFO } from "@/lib/constants";
@@ -89,66 +88,22 @@ export default function ContactPage() {
 
   return (
     <>
-      {/* Hero Section */}
-      <section className="relative min-h-[60vh] flex items-center bg-neutral-950 overflow-hidden">
-        {/* Background Effects */}
-        <div className="absolute inset-0">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary-500/20 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-secondary-500/20 rounded-full blur-3xl" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(16,185,129,0.1),transparent_50%)]" />
-        </div>
-
-        <div className="container-custom relative z-10 py-20">
-          <div className="max-w-4xl mx-auto text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-            >
-              <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-sm font-medium text-white mb-6">
-                <Sparkles className="w-4 h-4 text-primary-400" />
-                Get In Touch
-              </span>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-white mb-6"
-            >
-              Let&apos;s Build Something
-              <span className="block bg-gradient-to-r from-primary-400 to-secondary-400 bg-clip-text text-transparent">
-                Amazing Together
-              </span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-xl text-neutral-400 max-w-2xl mx-auto"
-            >
-              Ready to transform your business with smart POS solutions?
-              We&apos;re here to help you every step of the way.
-            </motion.p>
-          </div>
-        </div>
-
-        {/* Wave Divider */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M0 120L60 110C120 100 240 80 360 70C480 60 600 60 720 65C840 70 960 80 1080 85C1200 90 1320 90 1380 90L1440 90V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z"
-              fill="white"
-            />
-          </svg>
-        </div>
-      </section>
-
       {/* Contact Methods */}
-      <section className="py-16 bg-white">
+      <section className="pt-32 pb-16 bg-white">
         <div className="container-custom">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-12"
+          >
+            <h1 className="text-4xl md:text-5xl font-display font-bold text-neutral-900 mb-4">
+              Contact Us
+            </h1>
+            <p className="text-lg text-neutral-600 max-w-2xl mx-auto">
+              Ready to transform your business? We&apos;re here to help.
+            </p>
+          </motion.div>
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -172,7 +127,7 @@ export default function ContactPage() {
                 <div className={`absolute inset-0 bg-gradient-to-br ${method.color} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
 
                 <div className={`w-14 h-14 ${method.bgColor} rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
-                  <method.icon className={`w-6 h-6 bg-gradient-to-br ${method.color} bg-clip-text text-transparent`} style={{ color: method.color.includes('blue') ? '#3b82f6' : method.color.includes('purple') ? '#a855f7' : method.color.includes('emerald') ? '#10b981' : '#f97316' }} />
+                  <method.icon className="w-6 h-6" style={{ color: method.color.includes('blue') ? '#3b82f6' : method.color.includes('purple') ? '#a855f7' : method.color.includes('emerald') ? '#10b981' : '#f97316' }} />
                 </div>
 
                 <h3 className="font-semibold text-neutral-900 mb-1 group-hover:text-primary-600 transition-colors">

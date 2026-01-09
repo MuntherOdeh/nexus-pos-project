@@ -314,7 +314,7 @@ export default function SignupPage() {
                       name="firstName"
                       value={formData.firstName}
                       onChange={handleChange}
-                      placeholder="Munther"
+                      placeholder="First name"
                       error={errors.firstName}
                       leftIcon={<User className="w-4 h-4" />}
                       required
@@ -324,7 +324,7 @@ export default function SignupPage() {
                       name="lastName"
                       value={formData.lastName}
                       onChange={handleChange}
-                      placeholder="Odeh"
+                      placeholder="Last name"
                       error={errors.lastName}
                       leftIcon={<User className="w-4 h-4" />}
                       required
@@ -336,7 +336,7 @@ export default function SignupPage() {
                     name="companyName"
                     value={formData.companyName}
                     onChange={handleChange}
-                    placeholder="Pizza"
+                    placeholder="Your company name"
                     error={errors.companyName}
                     leftIcon={<Building2 className="w-4 h-4" />}
                     required
@@ -349,7 +349,7 @@ export default function SignupPage() {
                       type="email"
                       value={formData.email}
                       onChange={handleChange}
-                      placeholder="you@company.com"
+                      placeholder="Email address"
                       error={errors.email}
                       leftIcon={<Mail className="w-4 h-4" />}
                       required
@@ -360,7 +360,7 @@ export default function SignupPage() {
                       type="tel"
                       value={formData.phone || ""}
                       onChange={handleChange}
-                      placeholder="+971 50 000 0000"
+                      placeholder="Phone number (optional)"
                       error={errors.phone}
                       leftIcon={<Phone className="w-4 h-4" />}
                     />

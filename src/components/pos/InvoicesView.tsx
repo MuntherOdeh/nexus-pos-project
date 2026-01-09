@@ -1,11 +1,28 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import {
+  Search,
+  FileText,
+  Plus,
+  Download,
+  Send,
+  Eye,
+  MoreHorizontal,
+  Calendar,
+  User,
+  DollarSign,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  XCircle,
+  Filter,
+  ArrowUpDown,
+  Mail,
+  Printer,
+} from "lucide-react";
 import { formatMoney } from "@/lib/pos/format";
-import { formatDate } from "@/lib/utils";
-import { PosCard, PosCardContent, PosCardHeader } from "@/components/pos/PosCard";
-import { StatusBadge } from "@/components/pos/StatusBadge";
+import { cn } from "@/lib/utils";
 
 type InvoiceLine = {
   description: string;
@@ -29,14 +46,46 @@ type InvoiceRow = {
   lines: InvoiceLine[];
 };
 
+const STATUS_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string; bgColor: string; label: string }> = {
+  DRAFT: { icon: FileText, color: "text-slate-500", bgColor: "bg-slate-500/10", label: "Draft" },
+  SENT: { icon: Send, color: "text-blue-500", bgColor: "bg-blue-500/10", label: "Sent" },
+  PAID: { icon: CheckCircle2, color: "text-primary-500", bgColor: "bg-primary-500/10", label: "Paid" },
+  OVERDUE: { icon: AlertCircle, color: "text-red-500", bgColor: "bg-red-500/10", label: "Overdue" },
+  VOID: { icon: XCircle, color: "text-[var(--pos-muted)]", bgColor: "bg-[var(--pos-bg)]", label: "Void" },
+};
+
+function formatDate(date: string | Date): string {
+  return new Date(date).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const config = STATUS_CONFIG[status] || STATUS_CONFIG.DRAFT;
+  const Icon = config.icon;
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold",
+      config.bgColor, config.color
+    )}>
+      <Icon className="w-3.5 h-3.5" />
+      {config.label}
+    </span>
+  );
+}
+
 export function InvoicesView({ invoices }: { invoices: InvoiceRow[] }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<string>("ALL");
-  const [selectedId, setSelectedId] = useState<string | null>(invoices[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"date" | "amount" | "customer">("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return invoices.filter((inv) => {
+    let result = invoices.filter((inv) => {
       const matchesQuery =
         !q ||
         inv.number.toLowerCase().includes(q) ||
@@ -45,147 +94,277 @@ export function InvoicesView({ invoices }: { invoices: InvoiceRow[] }) {
       const matchesStatus = status === "ALL" ? true : inv.status === status;
       return matchesQuery && matchesStatus;
     });
-  }, [invoices, query, status]);
+
+    // Sort
+    result.sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === "date") {
+        cmp = new Date(a.issuedAt).getTime() - new Date(b.issuedAt).getTime();
+      } else if (sortBy === "amount") {
+        cmp = a.totalCents - b.totalCents;
+      } else if (sortBy === "customer") {
+        cmp = a.customerName.localeCompare(b.customerName);
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+
+    return result;
+  }, [invoices, query, status, sortBy, sortDir]);
 
   const selected = useMemo(
-    () => filtered.find((inv) => inv.id === selectedId) || filtered[0] || null,
+    () => filtered.find((inv) => inv.id === selectedId) || null,
     [filtered, selectedId]
   );
 
-  const totals = useMemo(() => {
-    return filtered.reduce(
-      (acc, inv) => {
-        acc.count += 1;
-        acc.totalCents += inv.totalCents;
-        return acc;
-      },
-      { count: 0, totalCents: 0 }
-    );
-  }, [filtered]);
+  const stats = useMemo(() => {
+    const draft = invoices.filter((i) => i.status === "DRAFT").length;
+    const sent = invoices.filter((i) => i.status === "SENT").length;
+    const paid = invoices.filter((i) => i.status === "PAID").length;
+    const overdue = invoices.filter((i) => i.status === "OVERDUE").length;
+    const totalPaid = invoices
+      .filter((i) => i.status === "PAID")
+      .reduce((sum, i) => sum + i.totalCents, 0);
+    const totalOutstanding = invoices
+      .filter((i) => i.status === "SENT" || i.status === "OVERDUE")
+      .reduce((sum, i) => sum + i.totalCents, 0);
+    return { draft, sent, paid, overdue, totalPaid, totalOutstanding };
+  }, [invoices]);
+
+  const currency = invoices[0]?.currency || "USD";
+
+  const toggleSort = (field: "date" | "amount" | "customer") => {
+    if (sortBy === field) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortDir("desc");
+    }
+  };
 
   return (
-    <div className="grid lg:grid-cols-5 gap-6">
-      <PosCard className="lg:col-span-3">
-        <PosCardHeader>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="h-[calc(100vh-80px)] flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="flex-shrink-0 p-4 border-b border-[color:var(--pos-border)] bg-[var(--pos-panel-solid)]">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center shadow-lg">
+              <FileText className="w-7 h-7 text-white" />
+            </div>
             <div>
-              <div className="text-sm font-semibold">Invoices</div>
-              <div className="text-xs text-[var(--pos-muted)]">
-                {totals.count} invoices • {formatMoney({ cents: totals.totalCents, currency: invoices[0]?.currency || "AED" })}
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--pos-muted)]" />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search invoice, customer, email…"
-                  className="w-full sm:w-72 pl-9 pr-4 py-2.5 rounded-2xl border border-[color:var(--pos-border)] bg-white/5 text-sm text-[var(--pos-text)] placeholder:text-[var(--pos-muted)] focus:outline-none focus:ring-2 focus:ring-[color:var(--pos-accent2)]"
-                />
-              </div>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full sm:w-44 px-3 py-2.5 rounded-2xl border border-[color:var(--pos-border)] bg-white/5 text-sm text-[var(--pos-text)] focus:outline-none focus:ring-2 focus:ring-[color:var(--pos-accent2)]"
-              >
-                {["ALL", "DRAFT", "SENT", "PAID", "OVERDUE", "VOID"].map((s) => (
-                  <option key={s} value={s}>
-                    {s === "ALL" ? "All statuses" : s}
-                  </option>
-                ))}
-              </select>
+              <h1 className="text-2xl font-bold">Invoices</h1>
+              <p className="text-sm text-[var(--pos-muted)]">
+                {invoices.length} total invoices
+              </p>
             </div>
           </div>
-        </PosCardHeader>
 
-        <PosCardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-[var(--pos-muted)]">
-                  <th className="py-2 pr-4 font-medium">Invoice</th>
-                  <th className="py-2 pr-4 font-medium">Customer</th>
-                  <th className="py-2 pr-4 font-medium">Issued</th>
-                  <th className="py-2 pr-4 font-medium">Status</th>
-                  <th className="py-2 text-right font-medium">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((inv) => (
-                  <tr
-                    key={inv.id}
-                    onClick={() => setSelectedId(inv.id)}
-                    className={`border-t border-[color:var(--pos-border)] cursor-pointer hover:bg-white/5 ${
-                      inv.id === selected?.id ? "bg-white/5" : ""
-                    }`}
-                  >
-                    <td className="py-3 pr-4 font-mono text-xs">{inv.number}</td>
-                    <td className="py-3 pr-4">{inv.customerName}</td>
-                    <td className="py-3 pr-4">{formatDate(inv.issuedAt)}</td>
-                    <td className="py-3 pr-4">
-                      <StatusBadge status={inv.status} />
-                    </td>
-                    <td className="py-3 text-right font-semibold">
-                      {formatMoney({ cents: inv.totalCents, currency: inv.currency })}
-                    </td>
-                  </tr>
-                ))}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="py-10 text-center text-[var(--pos-muted)]">
-                      No invoices match your filters.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <button className="px-5 py-3 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-2 hover:bg-primary-600 transition-colors shadow-lg">
+            <Plus className="w-5 h-5" />
+            New Invoice
+          </button>
+        </div>
+
+        {/* Stats */}
+        {invoices.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] p-4">
+              <div className="flex items-center gap-2 text-[var(--pos-muted)] text-sm mb-1">
+                <FileText className="w-4 h-4" />
+                Draft
+              </div>
+              <div className="text-2xl font-bold">{stats.draft}</div>
+            </div>
+            <div className="rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] p-4">
+              <div className="flex items-center gap-2 text-blue-500 text-sm mb-1">
+                <Send className="w-4 h-4" />
+                Sent
+              </div>
+              <div className="text-2xl font-bold">{stats.sent}</div>
+            </div>
+            <div className="rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] p-4">
+              <div className="flex items-center gap-2 text-primary-500 text-sm mb-1">
+                <CheckCircle2 className="w-4 h-4" />
+                Paid
+              </div>
+              <div className="text-2xl font-bold text-primary-500">{formatMoney({ cents: stats.totalPaid, currency })}</div>
+            </div>
+            <div className="rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] p-4">
+              <div className="flex items-center gap-2 text-amber-500 text-sm mb-1">
+                <Clock className="w-4 h-4" />
+                Outstanding
+              </div>
+              <div className="text-2xl font-bold text-amber-500">{formatMoney({ cents: stats.totalOutstanding, currency })}</div>
+            </div>
           </div>
-        </PosCardContent>
-      </PosCard>
+        )}
+      </div>
 
-      <PosCard className="lg:col-span-2">
-        <PosCardHeader>
-          <div className="text-sm font-semibold">Invoice details</div>
-          <div className="text-xs text-[var(--pos-muted)]">Select an invoice to preview line items.</div>
-        </PosCardHeader>
-        <PosCardContent>
-          {!selected ? (
-            <div className="text-sm text-[var(--pos-muted)]">Select an invoice from the table.</div>
+      {/* Filters */}
+      <div className="flex-shrink-0 p-4 border-b border-[color:var(--pos-border)] bg-[var(--pos-bg)]">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-[var(--pos-muted)]" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search invoices, customers..."
+              className="w-full pl-12 pr-4 py-3 rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-panel-solid)] text-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+          <div className="flex gap-2">
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="px-4 py-3 rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-panel-solid)] font-medium focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="DRAFT">Draft</option>
+              <option value="SENT">Sent</option>
+              <option value="PAID">Paid</option>
+              <option value="OVERDUE">Overdue</option>
+              <option value="VOID">Void</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-hidden flex">
+        {/* Invoice List */}
+        <div className="flex-1 overflow-auto border-r border-[color:var(--pos-border)]">
+          {invoices.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+              <div className="w-24 h-24 rounded-3xl bg-purple-500/10 flex items-center justify-center mb-6">
+                <FileText className="w-12 h-12 text-purple-500" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2">No Invoices Yet</h2>
+              <p className="text-[var(--pos-muted)] max-w-md mb-6">
+                Create your first invoice to start tracking payments and managing your business finances.
+              </p>
+              <button className="px-6 py-3 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-2 hover:bg-primary-600 transition-colors">
+                <Plus className="w-5 h-5" />
+                Create First Invoice
+              </button>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+              <Search className="w-16 h-16 text-[var(--pos-muted)] mb-4" />
+              <h3 className="text-xl font-semibold mb-2">No Results</h3>
+              <p className="text-[var(--pos-muted)]">No invoices match your search criteria</p>
+            </div>
           ) : (
-            <div className="space-y-5">
+            <div className="divide-y divide-[color:var(--pos-border)]">
+              {/* Table Header */}
+              <div className="grid grid-cols-12 gap-4 px-4 py-3 text-sm font-medium text-[var(--pos-muted)] bg-[var(--pos-bg)] sticky top-0">
+                <div className="col-span-3">Invoice</div>
+                <button onClick={() => toggleSort("customer")} className="col-span-3 flex items-center gap-1 hover:text-[var(--pos-text)]">
+                  Customer
+                  <ArrowUpDown className="w-3 h-3" />
+                </button>
+                <button onClick={() => toggleSort("date")} className="col-span-2 flex items-center gap-1 hover:text-[var(--pos-text)]">
+                  Date
+                  <ArrowUpDown className="w-3 h-3" />
+                </button>
+                <div className="col-span-2">Status</div>
+                <button onClick={() => toggleSort("amount")} className="col-span-2 flex items-center gap-1 justify-end hover:text-[var(--pos-text)]">
+                  Amount
+                  <ArrowUpDown className="w-3 h-3" />
+                </button>
+              </div>
+
+              {/* Invoice Rows */}
+              {filtered.map((inv) => (
+                <button
+                  key={inv.id}
+                  onClick={() => setSelectedId(inv.id)}
+                  className={cn(
+                    "w-full grid grid-cols-12 gap-4 px-4 py-4 text-left transition-colors hover:bg-[var(--pos-bg)]",
+                    selectedId === inv.id && "bg-primary-500/5 border-l-4 border-l-primary-500"
+                  )}
+                >
+                  <div className="col-span-3">
+                    <div className="font-semibold">{inv.number}</div>
+                    <div className="text-xs text-[var(--pos-muted)]">{inv.lines.length} items</div>
+                  </div>
+                  <div className="col-span-3">
+                    <div className="font-medium truncate">{inv.customerName}</div>
+                    {inv.customerEmail && (
+                      <div className="text-xs text-[var(--pos-muted)] truncate">{inv.customerEmail}</div>
+                    )}
+                  </div>
+                  <div className="col-span-2" suppressHydrationWarning>
+                    <div className="text-sm">{formatDate(inv.issuedAt)}</div>
+                    {inv.dueAt && (
+                      <div className="text-xs text-[var(--pos-muted)]">Due: {formatDate(inv.dueAt)}</div>
+                    )}
+                  </div>
+                  <div className="col-span-2">
+                    <StatusBadge status={inv.status} />
+                  </div>
+                  <div className="col-span-2 text-right">
+                    <div className="font-bold text-lg">{formatMoney({ cents: inv.totalCents, currency: inv.currency })}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Detail Panel */}
+        <div className="w-[400px] flex-shrink-0 overflow-auto bg-[var(--pos-panel-solid)]">
+          {!selected ? (
+            <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+              <Eye className="w-16 h-16 text-[var(--pos-muted)] mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Select an Invoice</h3>
+              <p className="text-sm text-[var(--pos-muted)]">Click on an invoice to view details</p>
+            </div>
+          ) : (
+            <div className="p-6 space-y-6">
+              {/* Invoice Header */}
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="font-mono text-xs text-[var(--pos-muted)]">{selected.number}</div>
-                  <div className="text-lg font-bold mt-1">{selected.customerName}</div>
+                  <div className="text-sm text-[var(--pos-muted)] font-mono">{selected.number}</div>
+                  <h2 className="text-xl font-bold mt-1">{selected.customerName}</h2>
                   {selected.customerEmail && (
-                    <div className="text-xs text-[var(--pos-muted)] mt-1">{selected.customerEmail}</div>
+                    <div className="text-sm text-[var(--pos-muted)] flex items-center gap-1 mt-1">
+                      <Mail className="w-3 h-3" />
+                      {selected.customerEmail}
+                    </div>
                   )}
                 </div>
                 <StatusBadge status={selected.status} />
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-2xl border border-[color:var(--pos-border)] bg-white/5 p-4">
-                  <div className="text-xs text-[var(--pos-muted)]">Issued</div>
-                  <div className="font-semibold mt-1">{formatDate(selected.issuedAt)}</div>
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] p-4" suppressHydrationWarning>
+                  <div className="text-xs text-[var(--pos-muted)] flex items-center gap-1 mb-1">
+                    <Calendar className="w-3 h-3" />
+                    Issued
+                  </div>
+                  <div className="font-semibold">{formatDate(selected.issuedAt)}</div>
                 </div>
-                <div className="rounded-2xl border border-[color:var(--pos-border)] bg-white/5 p-4">
-                  <div className="text-xs text-[var(--pos-muted)]">Due</div>
-                  <div className="font-semibold mt-1">{selected.dueAt ? formatDate(selected.dueAt) : "—"}</div>
+                <div className="rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] p-4" suppressHydrationWarning>
+                  <div className="text-xs text-[var(--pos-muted)] flex items-center gap-1 mb-1">
+                    <Clock className="w-3 h-3" />
+                    Due
+                  </div>
+                  <div className="font-semibold">{selected.dueAt ? formatDate(selected.dueAt) : "—"}</div>
                 </div>
               </div>
 
-              <div className="border border-[color:var(--pos-border)] rounded-2xl overflow-hidden">
-                <div className="px-4 py-3 text-xs text-[var(--pos-muted)] bg-white/5">Line items</div>
+              {/* Line Items */}
+              <div className="rounded-xl border border-[color:var(--pos-border)] overflow-hidden">
+                <div className="px-4 py-3 bg-[var(--pos-bg)] text-sm font-medium text-[var(--pos-muted)]">
+                  Line Items
+                </div>
                 <div className="divide-y divide-[color:var(--pos-border)]">
                   {selected.lines.map((line, idx) => (
-                    <div key={`${line.description}-${idx}`} className="px-4 py-3 flex items-start justify-between gap-4">
-                      <div>
-                        <div className="font-semibold">{line.description}</div>
+                    <div key={idx} className="px-4 py-3 flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium">{line.description}</div>
                         <div className="text-xs text-[var(--pos-muted)] mt-1">
-                          {line.quantity} × {formatMoney({ cents: line.unitPriceCents, currency: selected.currency })}
+                          {line.quantity} x {formatMoney({ cents: line.unitPriceCents, currency: selected.currency })}
                         </div>
                       </div>
                       <div className="font-semibold">
@@ -196,31 +375,49 @@ export function InvoicesView({ invoices }: { invoices: InvoiceRow[] }) {
                 </div>
               </div>
 
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between text-[var(--pos-muted)]">
-                  <span>Subtotal</span>
-                  <span className="text-[var(--pos-text)] font-semibold">
-                    {formatMoney({ cents: selected.subtotalCents, currency: selected.currency })}
-                  </span>
+              {/* Totals */}
+              <div className="space-y-2 pt-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[var(--pos-muted)]">Subtotal</span>
+                  <span className="font-medium">{formatMoney({ cents: selected.subtotalCents, currency: selected.currency })}</span>
                 </div>
-                <div className="flex items-center justify-between text-[var(--pos-muted)]">
-                  <span>Tax</span>
-                  <span className="text-[var(--pos-text)] font-semibold">
-                    {formatMoney({ cents: selected.taxCents, currency: selected.currency })}
-                  </span>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[var(--pos-muted)]">Tax</span>
+                  <span className="font-medium">{formatMoney({ cents: selected.taxCents, currency: selected.currency })}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--pos-muted)]">Total</span>
-                  <span className="text-[var(--pos-text)] font-bold text-lg">
-                    {formatMoney({ cents: selected.totalCents, currency: selected.currency })}
-                  </span>
+                <div className="flex justify-between text-xl font-bold pt-3 border-t border-[color:var(--pos-border)]">
+                  <span>Total</span>
+                  <span className="text-primary-500">{formatMoney({ cents: selected.totalCents, currency: selected.currency })}</span>
                 </div>
+              </div>
+
+              {/* Actions */}
+              <div className="grid grid-cols-2 gap-3 pt-4">
+                <button className="px-4 py-3 rounded-xl border border-[color:var(--pos-border)] font-medium flex items-center justify-center gap-2 hover:bg-[var(--pos-bg)] transition-colors">
+                  <Printer className="w-4 h-4" />
+                  Print
+                </button>
+                <button className="px-4 py-3 rounded-xl border border-[color:var(--pos-border)] font-medium flex items-center justify-center gap-2 hover:bg-[var(--pos-bg)] transition-colors">
+                  <Download className="w-4 h-4" />
+                  Download
+                </button>
+                {selected.status === "DRAFT" && (
+                  <button className="col-span-2 px-4 py-3 rounded-xl bg-blue-500 text-white font-medium flex items-center justify-center gap-2 hover:bg-blue-600 transition-colors">
+                    <Send className="w-4 h-4" />
+                    Send Invoice
+                  </button>
+                )}
+                {(selected.status === "SENT" || selected.status === "OVERDUE") && (
+                  <button className="col-span-2 px-4 py-3 rounded-xl bg-primary-500 text-white font-medium flex items-center justify-center gap-2 hover:bg-primary-600 transition-colors">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Mark as Paid
+                  </button>
+                )}
               </div>
             </div>
           )}
-        </PosCardContent>
-      </PosCard>
+        </div>
+      </div>
     </div>
   );
 }
-
