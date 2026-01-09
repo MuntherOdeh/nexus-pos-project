@@ -34,6 +34,9 @@ const iconMap: { [key: string]: React.ElementType } = {
   Cloud,
 };
 
+// Pages that have light backgrounds at the top (need dark nav text)
+const LIGHT_BACKGROUND_PAGES = ["/contact", "/privacy", "/terms"];
+
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -41,6 +44,12 @@ export function Header() {
   const [isMobileServicesOpen, setIsMobileServicesOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname();
+
+  // Check if current page has a light background
+  const hasLightBackground = LIGHT_BACKGROUND_PAGES.includes(pathname);
+
+  // Use dark navigation style when scrolled OR when on a light background page
+  const useDarkNav = isScrolled || hasLightBackground;
 
   useEffect(() => {
     setIsMounted(true);
@@ -91,7 +100,7 @@ export function Header() {
       <header
         className={cn(
           "fixed top-0 left-0 right-0 z-50 transition-all duration-500",
-          isScrolled
+          useDarkNav
             ? "bg-white/80 backdrop-blur-xl shadow-lg shadow-black/5 border-b border-neutral-200/50"
             : "bg-transparent"
         )}
@@ -104,7 +113,7 @@ export function Header() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <Logo variant={isScrolled ? "dark" : "light"} size="md" />
+              <Logo variant={useDarkNav ? "dark" : "light"} size="md" />
             </motion.div>
 
             {/* Desktop Navigation */}
@@ -140,10 +149,10 @@ export function Header() {
                       className={cn(
                         "relative flex items-center gap-1 px-4 py-2.5 text-sm font-medium rounded-full transition-all duration-300",
                         pathname === item.href || pathname.startsWith("/services")
-                          ? isScrolled
+                          ? useDarkNav
                             ? "text-white bg-primary-600 shadow-md shadow-primary-500/25"
                             : "text-white bg-white/20 backdrop-blur-sm"
-                          : isScrolled
+                          : useDarkNav
                             ? "text-neutral-600 hover:text-primary-600 hover:bg-neutral-100"
                             : "text-white/90 hover:text-white hover:bg-white/10",
                         "group"
@@ -254,10 +263,10 @@ export function Header() {
                       className={cn(
                         "relative px-4 py-2.5 text-sm font-medium rounded-full transition-all duration-300 block",
                         pathname === item.href
-                          ? isScrolled
+                          ? useDarkNav
                             ? "text-white bg-primary-600 shadow-md shadow-primary-500/25"
                             : "text-white bg-white/20 backdrop-blur-sm"
-                          : isScrolled
+                          : useDarkNav
                             ? "text-neutral-600 hover:text-primary-600 hover:bg-neutral-100"
                             : "text-white/90 hover:text-white hover:bg-white/10"
                       )}
@@ -280,7 +289,7 @@ export function Header() {
                 href={`tel:${COMPANY_INFO.phone}`}
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300",
-                  isScrolled ? "text-neutral-600 hover:text-primary-600 hover:bg-primary-50" : "text-white/80 hover:text-white hover:bg-white/10"
+                  useDarkNav ? "text-neutral-600 hover:text-primary-600 hover:bg-primary-50" : "text-white/80 hover:text-white hover:bg-white/10"
                 )}
               >
                 <Phone className="w-4 h-4" />
@@ -291,7 +300,7 @@ export function Header() {
                   size="md"
                   className={cn(
                     "shadow-lg transition-all duration-300 group",
-                    isScrolled
+                    useDarkNav
                       ? "bg-primary-600 hover:bg-primary-700 shadow-primary-500/20"
                       : "bg-white text-neutral-900 hover:bg-neutral-100 shadow-white/20"
                   )}
@@ -309,7 +318,7 @@ export function Header() {
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className={cn(
                 "lg:hidden p-3 rounded-xl transition-all duration-300",
-                isScrolled ? "hover:bg-neutral-100" : "hover:bg-white/10",
+                useDarkNav ? "hover:bg-neutral-100" : "hover:bg-white/10",
                 isMobileMenuOpen && "bg-primary-50"
               )}
               aria-label="Toggle menu"
@@ -323,7 +332,7 @@ export function Header() {
                     exit={{ rotate: 90, opacity: 0 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <X className={cn("w-6 h-6", isScrolled ? "text-neutral-700" : "text-white")} />
+                    <X className={cn("w-6 h-6", useDarkNav ? "text-neutral-700" : "text-white")} />
                   </motion.div>
                 ) : (
                   <motion.div
@@ -333,7 +342,7 @@ export function Header() {
                     exit={{ rotate: -90, opacity: 0 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <Menu className={cn("w-6 h-6", isScrolled ? "text-neutral-700" : "text-white")} />
+                    <Menu className={cn("w-6 h-6", useDarkNav ? "text-neutral-700" : "text-white")} />
                   </motion.div>
                 )}
               </AnimatePresence>
