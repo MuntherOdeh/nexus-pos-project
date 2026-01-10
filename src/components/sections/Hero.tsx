@@ -94,14 +94,14 @@ export function Hero() {
   ];
 
   return (
-    <section className="relative min-h-screen flex flex-col justify-center overflow-hidden bg-gradient-to-b from-neutral-950 via-neutral-900 to-neutral-950">
+    <section className="relative min-h-screen flex flex-col justify-center overflow-x-hidden overflow-y-visible bg-gradient-to-b from-neutral-950 via-neutral-900 to-neutral-950">
       {/* Animated Gradient Background */}
       <motion.div
         style={{ y: backgroundY }}
-        className="absolute inset-0 pointer-events-none"
+        className="absolute inset-0 pointer-events-none overflow-hidden"
       >
         {/* Primary gradient blob */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-to-b from-primary-500/30 via-primary-500/10 to-transparent blur-3xl" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] max-w-[200vw] h-[600px] bg-gradient-to-b from-primary-500/30 via-primary-500/10 to-transparent blur-3xl" />
 
         {/* Secondary accent blobs */}
         <motion.div

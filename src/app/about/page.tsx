@@ -62,112 +62,8 @@ const milestones = [
 export default function AboutPage() {
   return (
     <>
-      {/* Hero Section */}
-      <section className="relative min-h-[70vh] flex items-center bg-neutral-950 overflow-hidden">
-        {/* Background Effects */}
-        <div className="absolute inset-0">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary-500/20 rounded-full blur-3xl" />
-          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-secondary-500/20 rounded-full blur-3xl" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.1),transparent_70%)]" />
-        </div>
-
-        <div className="container-custom relative z-10 py-20">
-          <div className="max-w-4xl mx-auto text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-            >
-              <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-sm font-medium text-white mb-6">
-                <Users className="w-4 h-4 text-primary-400" />
-                About Us
-              </span>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-white mb-6"
-            >
-              Empowering UAE Businesses
-              <span className="block bg-gradient-to-r from-primary-400 to-secondary-400 bg-clip-text text-transparent">
-                Since 2017
-              </span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-xl text-neutral-400 max-w-2xl mx-auto mb-10"
-            >
-              We&apos;re a dedicated team of POS experts committed to helping restaurants,
-              cafes, and retail businesses thrive with smart technology solutions.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="flex flex-wrap items-center justify-center gap-4"
-            >
-              <Link href="/contact">
-                <Button size="lg" className="bg-white text-neutral-900 hover:bg-neutral-100">
-                  Get In Touch
-                  <ArrowRight className="w-5 h-5" />
-                </Button>
-              </Link>
-              <Link href="/services">
-                <Button variant="secondary" size="lg" className="border-white/20 text-white hover:bg-white/10">
-                  View Our Services
-                </Button>
-              </Link>
-            </motion.div>
-          </div>
-        </div>
-
-        {/* Wave Divider */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M0 120L60 110C120 100 240 80 360 70C480 60 600 60 720 65C840 70 960 80 1080 85C1200 90 1320 90 1380 90L1440 90V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z"
-              fill="white"
-            />
-          </svg>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section className="py-16 bg-white">
-        <div className="container-custom">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="grid grid-cols-2 lg:grid-cols-4 gap-6"
-          >
-            {STATS.map((stat, index) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="text-center p-6 rounded-2xl bg-gradient-to-br from-primary-50 to-white border border-primary-100"
-              >
-                <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary-600 to-primary-500 bg-clip-text text-transparent mb-2">
-                  {stat.value}
-                </div>
-                <div className="text-neutral-600 font-medium">{stat.label}</div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
       {/* Our Story */}
-      <section className="py-20 bg-neutral-50">
+      <section className="pt-32 pb-20 bg-neutral-50">
         <div className="container-custom">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <motion.div
@@ -244,6 +140,34 @@ export default function AboutPage() {
               </div>
             </motion.div>
           </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-16 bg-white">
+        <div className="container-custom">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="grid grid-cols-2 lg:grid-cols-4 gap-6"
+          >
+            {STATS.map((stat, index) => (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                className="text-center p-6 rounded-2xl bg-gradient-to-br from-primary-50 to-white border border-primary-100"
+              >
+                <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary-600 to-primary-500 bg-clip-text text-transparent mb-2">
+                  {stat.value}
+                </div>
+                <div className="text-neutral-600 font-medium">{stat.label}</div>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
       </section>
 
@@ -387,42 +311,6 @@ export default function AboutPage() {
               );
             })}
           </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 bg-white">
-        <div className="container-custom">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="bg-gradient-to-br from-neutral-900 to-neutral-800 rounded-3xl p-10 md:p-16 text-center text-white relative overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(16,185,129,0.2),transparent_50%)]" />
-            <div className="relative">
-              <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
-                Ready to Transform Your Business?
-              </h2>
-              <p className="text-neutral-400 text-lg mb-8 max-w-2xl mx-auto">
-                Let&apos;s discuss how NexusPoint can help streamline your operations
-                and boost your sales with our smart POS solutions.
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-4">
-                <Link href="/contact">
-                  <Button size="lg" className="bg-primary-500 hover:bg-primary-600">
-                    Get Started Today
-                    <ArrowRight className="w-5 h-5" />
-                  </Button>
-                </Link>
-                <Link href="/services">
-                  <Button variant="secondary" size="lg" className="border-white/20 text-white hover:bg-white/10">
-                    Explore Services
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </motion.div>
         </div>
       </section>
     </>

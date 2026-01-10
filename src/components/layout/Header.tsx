@@ -35,7 +35,7 @@ const iconMap: { [key: string]: React.ElementType } = {
 };
 
 // Pages that have light backgrounds at the top (need dark nav text)
-const LIGHT_BACKGROUND_PAGES = ["/contact", "/privacy", "/terms"];
+const LIGHT_BACKGROUND_PAGES = ["/contact", "/privacy", "/terms", "/about"];
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
