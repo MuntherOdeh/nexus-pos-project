@@ -52,94 +52,51 @@ const values = [
   },
 ];
 
-const milestones = [
-  { year: "2017", title: "Founded", description: "Started with a vision to simplify POS for UAE businesses" },
-  { year: "2019", title: "First 50 Clients", description: "Reached our first major milestone with 50 active clients" },
-  { year: "2021", title: "Cloud Platform", description: "Launched our cloud-based management platform" },
-  { year: "2024", title: "Growing Strong", description: "Continuing to innovate and expand our solutions" },
-];
-
 export default function AboutPage() {
   return (
     <>
       {/* Our Story */}
       <section className="pt-32 pb-20 bg-neutral-50">
         <div className="container-custom">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-            >
-              <span className="inline-flex items-center gap-2 px-4 py-2 bg-primary-100 rounded-full text-sm font-medium text-primary-700 mb-6">
-                Our Story
-              </span>
-              <h2 className="text-3xl md:text-4xl font-display font-bold text-neutral-900 mb-6">
-                Your Trusted POS Partner in the UAE
-              </h2>
-              <div className="space-y-4 text-neutral-600 leading-relaxed">
-                <p>
-                  <strong className="text-neutral-900">NexusPoint</strong> was founded with a simple mission:
-                  to make powerful POS technology accessible to every business in the UAE.
-                  Based in Al Ain, we understand the unique challenges and opportunities that
-                  local businesses face.
-                </p>
-                <p>
-                  With <strong className="text-neutral-900">over 7 years of experience</strong> in
-                  the industry, our team has helped countless restaurants, cafes, and retail shops
-                  streamline their operations and boost their sales with our comprehensive POS solutions.
-                </p>
-                <p>
-                  From complete hardware setups to custom software development and cloud management
-                  systems, we deliver practical, scalable solutions that grow with your business.
-                </p>
-              </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="max-w-3xl"
+          >
+            <span className="inline-flex items-center gap-2 px-4 py-2 bg-primary-100 rounded-full text-sm font-medium text-primary-700 mb-6">
+              Our Story
+            </span>
+            <h2 className="text-3xl md:text-4xl font-display font-bold text-neutral-900 mb-6">
+              Your Trusted POS Partner in the UAE
+            </h2>
+            <div className="space-y-4 text-neutral-600 leading-relaxed">
+              <p>
+                <strong className="text-neutral-900">NexusPoint</strong> was founded with a simple mission:
+                to make powerful POS technology accessible to every business in the UAE.
+                Based in Al Ain, we understand the unique challenges and opportunities that
+                local businesses face.
+              </p>
+              <p>
+                With <strong className="text-neutral-900">over 7 years of experience</strong> in
+                the industry, our team has helped countless restaurants, cafes, and retail shops
+                streamline their operations and boost their sales with our comprehensive POS solutions.
+              </p>
+              <p>
+                From complete hardware setups to custom software development and cloud management
+                systems, we deliver practical, scalable solutions that grow with your business.
+              </p>
+            </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-8">
-                {["Local UAE expertise", "24/7 support available", "Complete solutions", "Affordable pricing"].map((item, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-primary-500 flex-shrink-0" />
-                    <span className="text-neutral-700 text-sm">{item}</span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              className="relative"
-            >
-              {/* Timeline */}
-              <div className="relative">
-                {milestones.map((milestone, index) => (
-                  <motion.div
-                    key={milestone.year}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.1 }}
-                    className="flex gap-6 mb-8 last:mb-0"
-                  >
-                    <div className="relative flex flex-col items-center">
-                      <div className="w-12 h-12 rounded-full bg-primary-500 flex items-center justify-center text-white font-bold text-sm z-10">
-                        {milestone.year.slice(2)}
-                      </div>
-                      {index < milestones.length - 1 && (
-                        <div className="w-0.5 h-full bg-primary-200 absolute top-12" />
-                      )}
-                    </div>
-                    <div className="flex-1 bg-white rounded-2xl p-6 shadow-lg shadow-neutral-200/50 border border-neutral-100">
-                      <div className="text-sm font-medium text-primary-600 mb-1">{milestone.year}</div>
-                      <h3 className="font-semibold text-neutral-900 mb-2">{milestone.title}</h3>
-                      <p className="text-sm text-neutral-600">{milestone.description}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          </div>
+            <div className="grid grid-cols-2 gap-4 mt-8">
+              {["Local UAE expertise", "24/7 support available", "Complete solutions", "Affordable pricing"].map((item, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-primary-500 flex-shrink-0" />
+                  <span className="text-neutral-700 text-sm">{item}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
         </div>
       </section>
 
