@@ -135,8 +135,8 @@ export function Features() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.05 }}
-                className={`group relative ${feature.size} ${
-                  feature.featured ? "lg:col-span-2" : ""
+                className={`group relative col-span-1 ${
+                  feature.featured ? "md:col-span-2" : ""
                 }`}
               >
                 <div className={`h-full bg-neutral-900/50 backdrop-blur-sm border border-white/5 rounded-2xl p-6 hover:border-primary-500/30 transition-all duration-300 overflow-hidden ${

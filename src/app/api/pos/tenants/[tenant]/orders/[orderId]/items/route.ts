@@ -6,11 +6,33 @@ import { calculateOrderTotals, getDefaultTaxRate } from "@/lib/pos/order-totals"
 
 export const dynamic = "force-dynamic";
 
-const addItemSchema = z.object({
-  productId: z.string().min(1),
-  quantity: z.coerce.number().int().min(1).max(99).default(1),
-  notes: z.string().max(500).optional().nullable(),
-});
+// Schema for adding items - supports both catalog products and custom items
+const addItemSchema = z.discriminatedUnion("type", [
+  // Catalog product
+  z.object({
+    type: z.literal("catalog").default("catalog"),
+    productId: z.string().min(1),
+    quantity: z.coerce.number().int().min(1).max(99).default(1),
+    notes: z.string().max(500).optional().nullable(),
+  }),
+  // Custom item (no productId)
+  z.object({
+    type: z.literal("custom"),
+    productName: z.string().min(1).max(200),
+    unitPriceCents: z.coerce.number().int().min(1),
+    quantity: z.coerce.number().int().min(1).max(99).default(1),
+    notes: z.string().max(500).optional().nullable(),
+  }),
+]).or(
+  // Legacy format: detect by presence of productId or productName
+  z.object({
+    productId: z.string().min(1).optional(),
+    productName: z.string().min(1).max(200).optional(),
+    unitPriceCents: z.coerce.number().int().min(1).optional(),
+    quantity: z.coerce.number().int().min(1).max(99).default(1),
+    notes: z.string().max(500).optional().nullable(),
+  })
+);
 
 export async function POST(request: NextRequest, context: { params: { tenant: string; orderId: string } }) {
   const auth = await requirePosAuth(request, context.params.tenant);
@@ -27,15 +49,52 @@ export async function POST(request: NextRequest, context: { params: { tenant: st
     );
   }
 
-  const product = await prisma.product.findFirst({
-    where: { id: parsed.data.productId, tenantId: auth.ctx.tenantId, isActive: true },
-    select: { id: true, name: true, priceCents: true, currency: true },
-  });
+  const data = parsed.data;
+  
+  // Determine if this is a custom item or catalog product
+  let itemName: string;
+  let itemPrice: number;
+  let productId: string | null = null;
 
-  if (!product) {
-    return NextResponse.json({ success: false, error: "Product not found" }, { status: 404 });
+  // Handle discriminated union or legacy format
+  if ("type" in data && data.type === "custom") {
+    // New custom item format
+    itemName = data.productName;
+    itemPrice = data.unitPriceCents;
+  } else if ("type" in data && data.type === "catalog") {
+    // New catalog format
+    const product = await prisma.product.findFirst({
+      where: { id: data.productId, tenantId: auth.ctx.tenantId, isActive: true },
+      select: { id: true, name: true, priceCents: true },
+    });
+    if (!product) {
+      return NextResponse.json({ success: false, error: "Product not found" }, { status: 404 });
+    }
+    productId = product.id;
+    itemName = product.name;
+    itemPrice = product.priceCents;
+  } else if ("productId" in data && data.productId) {
+    // Legacy format with productId
+    const product = await prisma.product.findFirst({
+      where: { id: data.productId, tenantId: auth.ctx.tenantId, isActive: true },
+      select: { id: true, name: true, priceCents: true },
+    });
+    if (!product) {
+      return NextResponse.json({ success: false, error: "Product not found" }, { status: 404 });
+    }
+    productId = product.id;
+    itemName = product.name;
+    itemPrice = product.priceCents;
+  } else if ("productName" in data && data.productName && "unitPriceCents" in data && data.unitPriceCents) {
+    // Legacy custom item format
+    itemName = data.productName;
+    itemPrice = data.unitPriceCents;
+  } else {
+    return NextResponse.json({ success: false, error: "Must provide productId or productName with unitPriceCents" }, { status: 400 });
   }
 
+  const quantity = data.quantity;
+  const notes = "notes" in data ? data.notes : null;
   const orderId = context.params.orderId;
 
   const result = await prisma.$transaction(async (tx) => {
@@ -55,18 +114,18 @@ export async function POST(request: NextRequest, context: { params: { tenant: st
     await tx.posOrderItem.create({
       data: {
         orderId: order.id,
-        productId: product.id,
-        productName: product.name,
-        unitPriceCents: product.priceCents,
-        quantity: parsed.data.quantity,
-        notes: parsed.data.notes?.trim() || null,
+        productId: productId,
+        productName: itemName,
+        unitPriceCents: itemPrice,
+        quantity: quantity,
+        notes: notes?.trim() || null,
         status: "NEW",
       },
     });
 
     const itemsForTotals = await tx.posOrderItem.findMany({
       where: { orderId: order.id },
-      select: { unitPriceCents: true, quantity: true, status: true },
+      select: { unitPriceCents: true, quantity: true, status: true, discountPercent: true },
     });
 
     const totals = calculateOrderTotals({ items: itemsForTotals, taxRate: getDefaultTaxRate() });
@@ -89,6 +148,7 @@ export async function POST(request: NextRequest, context: { params: { tenant: st
         orderNumber: true,
         notes: true,
         subtotalCents: true,
+        discountCents: true,
         taxCents: true,
         totalCents: true,
         currency: true,
@@ -106,6 +166,7 @@ export async function POST(request: NextRequest, context: { params: { tenant: st
             quantity: true,
             status: true,
             notes: true,
+            discountPercent: true,
             createdAt: true,
           },
         },

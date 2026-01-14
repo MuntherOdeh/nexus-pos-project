@@ -92,7 +92,7 @@ export function HowItWorks() {
         </motion.div>
 
         {/* Steps Grid */}
-        <div className="grid lg:grid-cols-4 gap-8 mb-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 mb-12 sm:mb-16">
           {steps.map((step, index) => {
             const Icon = step.icon;
             const isActive = activeStep === index;

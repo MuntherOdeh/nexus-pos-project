@@ -76,7 +76,7 @@ export function Services({ showAll = false }: ServicesProps) {
             initial={isMounted ? { opacity: 0, y: 20 } : false}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="flex flex-wrap justify-center gap-4 mb-12"
+            className="flex overflow-x-auto pb-4 gap-3 sm:gap-4 mb-8 sm:mb-12 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap sm:justify-center scrollbar-hide"
           >
             {SERVICE_CATEGORIES.map((category, index) => {
               const CategoryIcon = categoryIcons[index]?.icon || Store;
@@ -84,7 +84,7 @@ export function Services({ showAll = false }: ServicesProps) {
                 <button
                   key={category.id}
                   onClick={() => setActiveCategory(index)}
-                  className={`flex items-center gap-3 px-6 py-4 rounded-2xl border-2 transition-all duration-300 ${
+                  className={`flex-shrink-0 flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 ${
                     activeCategory === index
                       ? "border-primary-500 bg-primary-50 shadow-lg shadow-primary-500/10"
                       : "border-neutral-200 bg-white hover:border-primary-200 hover:bg-primary-50/50"

@@ -82,6 +82,9 @@ import {
   Gem,
   CircleDot,
   Box,
+  ListOrdered,
+  PanelRightOpen,
+  PanelRightClose,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -1648,6 +1651,152 @@ function HeldOrdersPanel({
 }
 
 // ============================================================================
+// ACTIVE ORDERS PANEL - Shows all active orders across the restaurant
+// ============================================================================
+
+function ActiveOrdersPanel({
+  isOpen,
+  onClose,
+  openOrders,
+  activeOrderId,
+  currency,
+  onSelectOrder,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  openOrders: OpenOrderSummary[];
+  activeOrderId: string | null;
+  currency: string;
+  onSelectOrder: (orderId: string, tableId: string | null) => void;
+}) {
+  if (!isOpen) return null;
+
+  // Group orders by status
+  const inKitchenOrders = openOrders.filter(o => o.status === "IN_KITCHEN");
+  const readyOrders = openOrders.filter(o => o.status === "READY");
+  const forPaymentOrders = openOrders.filter(o => o.status === "FOR_PAYMENT");
+  const openOrdersList = openOrders.filter(o => o.status === "OPEN");
+
+  const orderGroups = [
+    { title: "Ready to Serve", orders: readyOrders, color: "bg-primary-500", icon: CheckCircle2 },
+    { title: "For Payment", orders: forPaymentOrders, color: "bg-blue-500", icon: CreditCard },
+    { title: "In Kitchen", orders: inKitchenOrders, color: "bg-amber-500", icon: Clock },
+    { title: "New Orders", orders: openOrdersList, color: "bg-secondary-500", icon: ShoppingCart },
+  ].filter(g => g.orders.length > 0);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-4">
+      <div className="w-full sm:w-[450px] h-[85vh] sm:h-full sm:max-h-[90vh] rounded-t-2xl sm:rounded-2xl bg-[var(--pos-panel-solid)] overflow-hidden shadow-2xl flex flex-col">
+        <div className="p-5 border-b border-[color:var(--pos-border)]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-primary-500 flex items-center justify-center">
+                <ListOrdered className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="font-bold text-lg">Active Orders</h2>
+                <p className="text-sm text-[var(--pos-muted)]">{openOrders.length} orders in progress</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-[var(--pos-border)]">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-auto p-4">
+          {openOrders.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-[var(--pos-muted)]">
+              <ListOrdered className="w-16 h-16 mb-4 opacity-50" />
+              <p className="text-lg font-medium">No Active Orders</p>
+              <p className="text-sm mt-1">Start a new order to see it here</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {orderGroups.map((group) => {
+                const Icon = group.icon;
+                return (
+                  <div key={group.title}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", group.color)}>
+                        <Icon className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="font-semibold text-sm">{group.title}</span>
+                      <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--pos-bg)]">
+                        {group.orders.length}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {group.orders.map((order) => {
+                        const isActive = order.id === activeOrderId;
+                        return (
+                          <button
+                            key={order.id}
+                            onClick={() => onSelectOrder(order.id, order.tableId)}
+                            className={cn(
+                              "w-full p-4 rounded-xl text-left transition-all",
+                              isActive
+                                ? "bg-primary-500 text-white shadow-lg"
+                                : "bg-[var(--pos-bg)] border border-[color:var(--pos-border)] hover:border-primary-500"
+                            )}
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-semibold">
+                                {order.tableId ? `Table Order` : "Quick Sale"}
+                              </span>
+                              <span className={cn(
+                                "text-xs font-medium px-2 py-0.5 rounded-full",
+                                isActive ? "bg-white/20" : "bg-[var(--pos-border)]"
+                              )}>
+                                #{order.orderNumber.slice(-6)}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className={cn("text-sm", isActive ? "text-white/80" : "text-[var(--pos-muted)]")} suppressHydrationWarning>
+                                {formatTime(order.openedAt)}
+                              </span>
+                              <span className="font-bold">
+                                {formatMoney({ cents: order.totalCents, currency })}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Summary Footer */}
+        <div className="p-4 border-t border-[color:var(--pos-border)] bg-[var(--pos-bg2)]">
+          <div className="grid grid-cols-4 gap-2 text-center">
+            <div className="p-2 rounded-lg bg-[var(--pos-panel-solid)]">
+              <div className="text-lg font-bold text-primary-500">{readyOrders.length}</div>
+              <div className="text-xs text-[var(--pos-muted)]">Ready</div>
+            </div>
+            <div className="p-2 rounded-lg bg-[var(--pos-panel-solid)]">
+              <div className="text-lg font-bold text-blue-500">{forPaymentOrders.length}</div>
+              <div className="text-xs text-[var(--pos-muted)]">Payment</div>
+            </div>
+            <div className="p-2 rounded-lg bg-[var(--pos-panel-solid)]">
+              <div className="text-lg font-bold text-amber-500">{inKitchenOrders.length}</div>
+              <div className="text-xs text-[var(--pos-muted)]">Kitchen</div>
+            </div>
+            <div className="p-2 rounded-lg bg-[var(--pos-panel-solid)]">
+              <div className="text-lg font-bold text-secondary-500">{openOrdersList.length}</div>
+              <div className="text-xs text-[var(--pos-muted)]">New</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // ORDER TYPE SELECTOR
 // ============================================================================
 
@@ -1939,6 +2088,7 @@ export function CheckoutView({
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [heldOrdersOpen, setHeldOrdersOpen] = useState(false);
   const [addCustomProductOpen, setAddCustomProductOpen] = useState(false);
+  const [activeOrdersOpen, setActiveOrdersOpen] = useState(false);
   const [discountTarget, setDiscountTarget] = useState<"order" | "item">("order");
   const [noteTarget, setNoteTarget] = useState<"order" | "item">("order");
 
@@ -2158,6 +2308,17 @@ export function CheckoutView({
     }
   };
 
+  const selectExistingOrder = async (orderId: string) => {
+    setError(null);
+    setBusyKey(`select:${orderId}`);
+    try {
+      await refreshOrder(orderId);
+      setViewMode("products");
+      setActiveOrdersOpen(false);
+    } finally {
+      setBusyKey(null);
+    }
+  };
   const addProduct = async (productId: string) => {
     if (!activeOrder?.id) {
       setError("Select a table or start a quick sale first.");
@@ -2439,6 +2600,17 @@ export function CheckoutView({
                   </div>
 
                   <div className="flex items-center gap-3">
+                    {/* Active Orders Button - always show when there are open orders */}
+                    {openOrders.length > 0 && (
+                      <button
+                        onClick={() => setActiveOrdersOpen(true)}
+                        className="px-4 py-2.5 rounded-xl bg-primary-500/10 text-primary-500 font-medium flex items-center gap-2 hover:bg-primary-500/20 transition-colors"
+                      >
+                        <ListOrdered className="w-4 h-4" />
+                        {openOrders.length} Active
+                      </button>
+                    )}
+
                     {heldOrders.length > 0 && (
                       <button
                         onClick={() => setHeldOrdersOpen(true)}
@@ -2581,6 +2753,20 @@ export function CheckoutView({
                     onChange={setOrderType}
                     disabled={activeOrder?.status !== "OPEN"}
                   />
+
+                  {/* Active Orders Toggle */}
+                  {openOrders.length > 1 && (
+                    <button
+                      onClick={() => setActiveOrdersOpen(true)}
+                      className="px-4 py-3 rounded-xl bg-primary-500/10 text-primary-500 font-medium flex items-center gap-2 hover:bg-primary-500/20 transition-colors relative"
+                    >
+                      <ListOrdered className="w-5 h-5" />
+                      <span className="hidden lg:inline">Orders</span>
+                      <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary-500 text-white text-xs flex items-center justify-center">
+                        {openOrders.length}
+                      </span>
+                    </button>
+                  )}
 
                   <button
                     onClick={() => setAddCustomProductOpen(true)}
@@ -2990,6 +3176,15 @@ export function CheckoutView({
         currency={tenant.currency}
         onRecall={recallOrder}
         onDelete={(id) => setHeldOrders(prev => prev.filter(o => o.id !== id))}
+      />
+
+      <ActiveOrdersPanel
+        isOpen={activeOrdersOpen}
+        onClose={() => setActiveOrdersOpen(false)}
+        openOrders={openOrders}
+        activeOrderId={activeOrder?.id || null}
+        currency={tenant.currency}
+        onSelectOrder={(orderId) => selectExistingOrder(orderId)}
       />
 
       <AddCustomProductModal

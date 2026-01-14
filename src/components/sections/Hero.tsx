@@ -138,7 +138,7 @@ export function Hero() {
             initial={isMounted ? { opacity: 0, y: 30 } : false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-display font-bold text-white leading-[1.05] tracking-tight mb-6"
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-display font-bold text-white leading-[1.1] tracking-tight mb-4 sm:mb-6"
           >
             Sell More.
             <br />
@@ -178,7 +178,7 @@ export function Hero() {
             initial={isMounted ? { opacity: 0, y: 20 } : false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-xl md:text-2xl text-neutral-400 max-w-2xl mx-auto mb-10 leading-relaxed"
+            className="text-base sm:text-lg md:text-xl text-neutral-400 max-w-2xl mx-auto mb-6 sm:mb-10 leading-relaxed px-2"
           >
             The all-in-one POS system built for UAE businesses.
             Fast setup, powerful features, zero headaches.
@@ -233,12 +233,12 @@ export function Hero() {
           initial={isMounted ? { opacity: 0, y: 40 } : false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.5 }}
-          className="mt-20"
+          className="mt-10 sm:mt-16 md:mt-20 px-2"
         >
           <div className="relative max-w-4xl mx-auto">
             {/* Main Card */}
             <motion.div
-              className="relative bg-neutral-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl"
+              className="relative bg-neutral-900/80 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl"
               whileHover={{ scale: 1.01 }}
               transition={{ type: "spring", stiffness: 300 }}
             >
@@ -247,7 +247,7 @@ export function Hero() {
 
               <div className="relative">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
                   <div className="flex items-center gap-4">
                     <motion.div
                       className={`w-12 h-12 bg-gradient-to-br ${currentIndustry.color} rounded-xl flex items-center justify-center`}
@@ -295,7 +295,7 @@ export function Hero() {
                 </div>
 
                 {/* Stats Dashboard */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
                   <AnimatePresence mode="wait">
                     {statsData.map((stat, index) => {
                       const Icon = stat.icon;
@@ -308,7 +308,7 @@ export function Hero() {
                           transition={{ delay: index * 0.1 }}
                           onMouseEnter={() => setHoveredStat(index)}
                           onMouseLeave={() => setHoveredStat(null)}
-                          className={`bg-neutral-800/50 rounded-2xl p-4 cursor-pointer transition-all duration-300 border border-transparent ${
+                          className={`bg-neutral-800/50 rounded-xl sm:rounded-2xl p-3 sm:p-4 cursor-pointer transition-all duration-300 border border-transparent ${
                             hoveredStat === index ? "bg-neutral-800 border-primary-500/30 scale-105 shadow-lg shadow-primary-500/10" : ""
                           }`}
                         >
@@ -316,7 +316,7 @@ export function Hero() {
                             <p className="text-neutral-500 text-xs">{stat.label}</p>
                             <Icon className={`w-4 h-4 ${hoveredStat === index ? "text-primary-400" : "text-neutral-600"} transition-colors`} />
                           </div>
-                          <p className="text-white text-xl font-bold">{stat.value}</p>
+                          <p className="text-white text-base sm:text-lg md:text-xl font-bold">{stat.value}</p>
                           <div className="flex items-center gap-2 mt-1">
                             <span className={`text-xs ${stat.positive ? "text-emerald-400" : "text-red-400"}`}>
                               {stat.change}
@@ -335,7 +335,7 @@ export function Hero() {
                 </div>
 
                 {/* Quick Actions Bar */}
-                <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
                   {quickActions.map((action, index) => {
                     const Icon = action.icon;
                     return (
@@ -348,7 +348,7 @@ export function Hero() {
                         onMouseLeave={() => setHoveredAction(null)}
                         whileHover={{ scale: 1.05, y: -2 }}
                         whileTap={{ scale: 0.95 }}
-                        className={`flex-shrink-0 flex items-center gap-2 px-5 py-3 bg-neutral-800/80 hover:bg-neutral-700/80 border border-white/5 rounded-xl text-sm cursor-pointer transition-all duration-300 ${
+                        className={`flex-shrink-0 flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-3 bg-neutral-800/80 hover:bg-neutral-700/80 border border-white/5 rounded-lg sm:rounded-xl text-xs sm:text-sm cursor-pointer transition-all duration-300 ${
                           hoveredAction === index ? "border-primary-500/30 shadow-lg shadow-primary-500/5" : ""
                         }`}
                       >
@@ -375,7 +375,7 @@ export function Hero() {
                     opacity: { duration: 0.3 },
                     scale: { duration: 0.3 }
                   }}
-                  className="absolute -top-6 -right-6 bg-neutral-900 border border-white/10 rounded-2xl p-4 shadow-xl hidden md:block cursor-pointer hover:scale-105 transition-transform"
+                  className="absolute -top-6 -right-6 bg-neutral-900 border border-white/10 rounded-2xl p-4 shadow-xl hidden lg:block cursor-pointer hover:scale-105 transition-transform"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
@@ -401,7 +401,7 @@ export function Hero() {
                     opacity: { duration: 0.3 },
                     scale: { duration: 0.3 }
                   }}
-                  className="absolute -bottom-4 -left-4 bg-neutral-900 border border-white/10 rounded-2xl p-4 shadow-xl hidden md:block cursor-pointer hover:scale-105 transition-transform"
+                  className="absolute -bottom-4 -left-4 bg-neutral-900 border border-white/10 rounded-2xl p-4 shadow-xl hidden lg:block cursor-pointer hover:scale-105 transition-transform"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center">
@@ -420,7 +420,7 @@ export function Hero() {
             <motion.div
               animate={{ y: [0, 10, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-              className="absolute -bottom-4 -left-4 bg-neutral-900 border border-white/10 rounded-2xl p-4 shadow-xl hidden md:block"
+              className="absolute -bottom-4 -left-4 bg-neutral-900 border border-white/10 rounded-2xl p-4 shadow-xl hidden lg:block"
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center">

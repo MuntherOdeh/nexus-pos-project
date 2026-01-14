@@ -53,7 +53,7 @@ export function Footer() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="relative bg-gradient-to-br from-primary-500 via-primary-600 to-emerald-600 rounded-3xl p-10 md:p-14 overflow-hidden"
+            className="relative bg-gradient-to-br from-primary-500 via-primary-600 to-emerald-600 rounded-2xl sm:rounded-3xl p-6 sm:p-10 md:p-14 overflow-hidden"
           >
             {/* Decorative elements */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
@@ -66,7 +66,7 @@ export function Footer() {
                   <Zap className="w-4 h-4" />
                   <span>Start your free trial today</span>
                 </div>
-                <h3 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 leading-tight">
+                <h3 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 leading-tight">
                   Ready to transform your business?
                 </h3>
                 <p className="text-white/80 text-lg">

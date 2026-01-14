@@ -33,7 +33,7 @@ export async function POST(request: NextRequest, context: { params: { tenant: st
 
     const itemsForTotals = await tx.posOrderItem.findMany({
       where: { orderId: order.id },
-      select: { unitPriceCents: true, quantity: true, status: true },
+      select: { unitPriceCents: true, quantity: true, status: true, discountPercent: true },
     });
 
     const billableCount = itemsForTotals.filter((item) => item.status !== "VOID").length;
@@ -63,6 +63,7 @@ export async function POST(request: NextRequest, context: { params: { tenant: st
         orderNumber: true,
         notes: true,
         subtotalCents: true,
+        discountCents: true,
         taxCents: true,
         totalCents: true,
         currency: true,
@@ -80,6 +81,7 @@ export async function POST(request: NextRequest, context: { params: { tenant: st
             quantity: true,
             status: true,
             notes: true,
+            discountPercent: true,
             createdAt: true,
           },
         },

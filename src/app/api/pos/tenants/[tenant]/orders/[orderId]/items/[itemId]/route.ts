@@ -12,6 +12,7 @@ const patchItemSchema = z
     quantity: z.coerce.number().int().min(1).max(99).optional(),
     notes: z.string().max(500).nullable().optional(),
     status: z.enum(["NEW", "SENT", "IN_PROGRESS", "READY", "SERVED", "VOID"]).optional(),
+    discountPercent: z.coerce.number().min(0).max(100).nullable().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: "No changes provided" });
 
@@ -63,7 +64,7 @@ export async function PATCH(
       return { ok: false as const, status: 400, error: "Cannot modify a voided item" };
     }
 
-    if ((parsed.data.quantity !== undefined || parsed.data.notes !== undefined) && item.status !== "NEW") {
+    if ((parsed.data.quantity !== undefined || parsed.data.notes !== undefined || parsed.data.discountPercent !== undefined) && item.status !== "NEW") {
       return { ok: false as const, status: 400, error: "Only NEW items can be edited" };
     }
 
@@ -73,12 +74,13 @@ export async function PATCH(
         ...(parsed.data.quantity !== undefined ? { quantity: parsed.data.quantity } : {}),
         ...(parsed.data.notes !== undefined ? { notes: parsed.data.notes?.trim() || null } : {}),
         ...(parsed.data.status ? { status: parsed.data.status } : {}),
+        ...(parsed.data.discountPercent !== undefined ? { discountPercent: parsed.data.discountPercent ?? 0 } : {}),
       },
     });
 
     const itemsForTotals = await tx.posOrderItem.findMany({
       where: { orderId: order.id },
-      select: { unitPriceCents: true, quantity: true, status: true },
+      select: { unitPriceCents: true, quantity: true, status: true, discountPercent: true },
     });
 
     const totals = calculateOrderTotals({ items: itemsForTotals, taxRate: getDefaultTaxRate() });
@@ -101,6 +103,7 @@ export async function PATCH(
         orderNumber: true,
         notes: true,
         subtotalCents: true,
+        discountCents: true,
         taxCents: true,
         totalCents: true,
         currency: true,
@@ -118,6 +121,7 @@ export async function PATCH(
             quantity: true,
             status: true,
             notes: true,
+            discountPercent: true,
             createdAt: true,
           },
         },

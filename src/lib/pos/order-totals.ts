@@ -5,18 +5,33 @@ export function isBillableItemStatus(status: PosOrderItemStatus): boolean {
 }
 
 export function calculateOrderTotals(params: {
-  items: Array<{ unitPriceCents: number; quantity: number; status: PosOrderItemStatus }>;
+  items: Array<{ 
+    unitPriceCents: number; 
+    quantity: number; 
+    status: PosOrderItemStatus;
+    discountPercent?: number | null;
+  }>;
   taxRate: number;
-}): { subtotalCents: number; taxCents: number; totalCents: number } {
-  const subtotalCents = params.items.reduce((sum, item) => {
-    if (!isBillableItemStatus(item.status)) return sum;
-    return sum + item.unitPriceCents * item.quantity;
-  }, 0);
+}): { subtotalCents: number; taxCents: number; totalCents: number; discountCents: number } {
+  let subtotalBeforeDiscount = 0;
+  let totalDiscountCents = 0;
 
+  for (const item of params.items) {
+    if (!isBillableItemStatus(item.status)) continue;
+    
+    const lineTotal = item.unitPriceCents * item.quantity;
+    const discountPercent = item.discountPercent ?? 0;
+    const itemDiscount = Math.round(lineTotal * discountPercent / 100);
+    
+    subtotalBeforeDiscount += lineTotal;
+    totalDiscountCents += itemDiscount;
+  }
+
+  const subtotalCents = subtotalBeforeDiscount - totalDiscountCents;
   const taxCents = Math.round(subtotalCents * params.taxRate);
   const totalCents = subtotalCents + taxCents;
 
-  return { subtotalCents, taxCents, totalCents };
+  return { subtotalCents, taxCents, totalCents, discountCents: totalDiscountCents };
 }
 
 export function getDefaultTaxRate(): number {
