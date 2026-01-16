@@ -170,6 +170,50 @@ export function KdsView({
     }
   };
 
+  const markAllReady = async (order: KdsOrder) => {
+    const itemsToUpdate = order.items.filter(
+      (i) => i.status === "SENT" || i.status === "IN_PROGRESS"
+    );
+    if (itemsToUpdate.length === 0) return;
+
+    setBusy(order.id);
+    try {
+      for (const item of itemsToUpdate) {
+        await fetch(`/api/pos/tenants/${tenant.slug}/orders/${order.id}/items/${item.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "READY" }),
+        });
+      }
+      await refresh();
+    } catch {
+      setError("Failed to update items");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const markAllServed = async (order: KdsOrder) => {
+    const itemsToUpdate = order.items.filter((i) => i.status === "READY");
+    if (itemsToUpdate.length === 0) return;
+
+    setBusy(order.id);
+    try {
+      for (const item of itemsToUpdate) {
+        await fetch(`/api/pos/tenants/${tenant.slug}/orders/${order.id}/items/${item.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "SERVED" }),
+        });
+      }
+      await refresh();
+    } catch {
+      setError("Failed to update items");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const EmptyColumn = ({ title, subtitle, icon: Icon }: { title: string; subtitle: string; icon: React.ComponentType<{ className?: string }> }) => (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <div className="w-16 h-16 rounded-2xl bg-[var(--pos-bg)] flex items-center justify-center mb-4">
@@ -184,6 +228,7 @@ export function KdsView({
     const ageColor = isMounted ? getAgeColor(order.sentToKitchenAt || order.openedAt, currentTime) : "text-[var(--pos-muted)]";
     const activeItems = order.items.filter(i => i.status !== "SERVED" && i.status !== "VOID");
     const readyItems = order.items.filter(i => i.status === "READY").length;
+    const pendingItems = order.items.filter(i => i.status === "SENT" || i.status === "IN_PROGRESS").length;
     const totalActiveItems = activeItems.length;
 
     return (
@@ -215,6 +260,32 @@ export function KdsView({
                 {readyItems}/{totalActiveItems} ready
               </div>
             </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="mt-3 flex gap-2">
+            {pendingItems > 0 && (
+              <button
+                type="button"
+                onClick={() => markAllReady(order)}
+                disabled={busy === order.id}
+                className="flex-1 px-3 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary-600 transition-colors disabled:opacity-50"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                All Ready ({pendingItems})
+              </button>
+            )}
+            {readyItems > 0 && (
+              <button
+                type="button"
+                onClick={() => markAllServed(order)}
+                disabled={busy === order.id}
+                className="flex-1 px-3 py-2 rounded-xl bg-secondary-500 text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-secondary-600 transition-colors disabled:opacity-50"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                All Served ({readyItems})
+              </button>
+            )}
           </div>
         </div>
 

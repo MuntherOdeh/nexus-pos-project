@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useMemo, useState, useTransition } from "react";
+import React, { createContext, useContext, useMemo, useState, useTransition, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -22,9 +22,12 @@ import {
   HelpCircle,
   Home,
   Plus,
+  Banknote,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { POS_THEMES, type PosThemeKey, normalizePosTheme } from "@/lib/pos/theme";
+import { OpeningControlDialog } from "./OpeningControlDialog";
 
 type TenantShell = {
   slug: string;
@@ -79,21 +82,62 @@ export function PosShell({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [isOpeningControlOpen, setIsOpeningControlOpen] = useState(false);
+  const [currentCashSession, setCurrentCashSession] = useState<any>(null);
+  const [cashSessionChecked, setCashSessionChecked] = useState(false);
 
   const themeClass = useMemo(() => POS_THEMES[theme].className, [theme]);
   const isDark = theme === "DARK";
 
-  // Navigation items - removed Warehouse
-  const navItems = useMemo(
+  // Fetch current cash session on mount and auto-show dialog if none exists
+  const fetchCashSession = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/pos/tenants/${tenant.slug}/cash-sessions?status=OPEN`);
+      const data = await response.json();
+      if (data.success && data.currentSession) {
+        setCurrentCashSession(data.currentSession);
+      } else {
+        setCurrentCashSession(null);
+      }
+      setCashSessionChecked(true);
+    } catch {
+      setCashSessionChecked(true);
+    }
+  }, [tenant.slug]);
+
+  useEffect(() => {
+    fetchCashSession();
+  }, [fetchCashSession]);
+
+  // Role-based navigation
+  // OWNER, ADMIN, MANAGER: See everything
+  // STAFF (Cashier): See only POS and Active Orders
+  // KITCHEN: See only Kitchen Display
+  const userRole = user?.role || "STAFF";
+
+  // Auto-show opening control dialog when no session exists (only for non-kitchen roles)
+  useEffect(() => {
+    if (cashSessionChecked && !currentCashSession && ["OWNER", "ADMIN", "MANAGER", "STAFF"].includes(userRole)) {
+      setIsOpeningControlOpen(true);
+    }
+  }, [cashSessionChecked, currentCashSession, userRole]);
+
+  const allNavItems = useMemo(
     () => [
-      { href: isPathBased ? base : "/", label: "Dashboard", icon: LayoutDashboard, color: "text-blue-500" },
-      { href: isPathBased ? `${base}/checkout` : "/checkout", label: "Point of Sale", icon: ShoppingCart, color: "text-emerald-500" },
-      { href: isPathBased ? `${base}/kds` : "/kds", label: "Kitchen Display", icon: ChefHat, color: "text-orange-500" },
-      { href: isPathBased ? `${base}/invoices` : "/invoices", label: "Invoices", icon: Receipt, color: "text-purple-500" },
-      { href: isPathBased ? `${base}/inventory` : "/inventory", label: "Products", icon: Boxes, color: "text-pink-500" },
-      { href: isPathBased ? `${base}/logistics` : "/logistics", label: "Logistics", icon: Truck, color: "text-amber-500" },
+      { href: isPathBased ? base : "/", label: "Dashboard", icon: LayoutDashboard, color: "text-blue-500", roles: ["OWNER", "ADMIN", "MANAGER"] },
+      { href: isPathBased ? `${base}/checkout` : "/checkout", label: "Point of Sale", icon: ShoppingCart, color: "text-emerald-500", roles: ["OWNER", "ADMIN", "MANAGER", "STAFF"] },
+      { href: isPathBased ? `${base}/orders` : "/orders", label: "Active Orders", icon: ClipboardList, color: "text-cyan-500", roles: ["OWNER", "ADMIN", "MANAGER", "STAFF"] },
+      { href: isPathBased ? `${base}/kds` : "/kds", label: "Kitchen Display", icon: ChefHat, color: "text-orange-500", roles: ["OWNER", "ADMIN", "MANAGER", "KITCHEN"] },
+      { href: isPathBased ? `${base}/invoices` : "/invoices", label: "Invoices", icon: Receipt, color: "text-purple-500", roles: ["OWNER", "ADMIN", "MANAGER"] },
+      { href: isPathBased ? `${base}/inventory` : "/inventory", label: "Products", icon: Boxes, color: "text-pink-500", roles: ["OWNER", "ADMIN", "MANAGER"] },
+      { href: isPathBased ? `${base}/logistics` : "/logistics", label: "Logistics", icon: Truck, color: "text-amber-500", roles: ["OWNER", "ADMIN", "MANAGER"] },
     ],
     [base, isPathBased]
+  );
+
+  const navItems = useMemo(
+    () => allNavItems.filter((item) => item.roles.includes(userRole)),
+    [allNavItems, userRole]
   );
 
   const settingsItem = useMemo(
@@ -272,7 +316,30 @@ export function PosShell({
 
             {/* Bottom Section */}
             <div className="border-t border-[color:var(--pos-border)] p-3 space-y-2">
+              {/* Opening Control Button */}
+              {["OWNER", "ADMIN", "MANAGER", "STAFF"].includes(userRole) && (
+                <button
+                  onClick={() => setIsOpeningControlOpen(true)}
+                  title={isSidebarCollapsed ? "Cash Control" : undefined}
+                  className={cn(
+                    "w-full flex items-center gap-3 rounded-xl transition-all duration-200",
+                    isSidebarCollapsed ? "justify-center p-3" : "px-4 py-3",
+                    currentCashSession
+                      ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/30"
+                      : "bg-amber-500/10 text-amber-500 border border-amber-500/30"
+                  )}
+                >
+                  <Banknote className="w-5 h-5 flex-shrink-0" />
+                  {!isSidebarCollapsed && (
+                    <span className="flex-1 text-left">
+                      {currentCashSession ? "Cash Session Active" : "Open Cash Session"}
+                    </span>
+                  )}
+                </button>
+              )}
+
               {/* Settings Link */}
+              {["OWNER", "ADMIN", "MANAGER"].includes(userRole) && (
               <Link
                 href={settingsItem.href}
                 onClick={() => setIsSidebarOpen(false)}
@@ -288,6 +355,7 @@ export function PosShell({
                 <Settings className="w-5 h-5 flex-shrink-0" />
                 {!isSidebarCollapsed && <span>Settings</span>}
               </Link>
+              )}
 
               {/* Theme Toggle */}
               <button
@@ -411,6 +479,18 @@ export function PosShell({
             </main>
           </div>
         </div>
+
+        {/* Opening Control Dialog */}
+        <OpeningControlDialog
+          isOpen={isOpeningControlOpen}
+          onClose={() => setIsOpeningControlOpen(false)}
+          tenantSlug={tenant.slug}
+          currency="AED"
+          currentSession={currentCashSession}
+          onSessionChange={(session) => {
+            setCurrentCashSession(session);
+          }}
+        />
       </div>
     </PosShellContext.Provider>
   );

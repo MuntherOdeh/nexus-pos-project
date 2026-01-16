@@ -296,7 +296,7 @@ export function Hero() {
 
                 {/* Stats Dashboard */}
                 <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
-                  <AnimatePresence mode="wait">
+                  <AnimatePresence>
                     {statsData.map((stat, index) => {
                       const Icon = stat.icon;
                       return (

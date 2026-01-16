@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Search,
   Package,
@@ -21,9 +22,11 @@ import {
   Layers,
   X,
   Info,
+  RefreshCw,
 } from "lucide-react";
 import { formatMoney } from "@/lib/pos/format";
 import { cn } from "@/lib/utils";
+import { AddProductDialog } from "./AddProductDialog";
 
 type WarehouseStock = {
   warehouseName: string;
@@ -45,7 +48,16 @@ type ProductRow = {
   warehouses: WarehouseStock[];
 };
 
-export function InventoryView({ products }: { products: ProductRow[] }) {
+type InventoryViewProps = {
+  products: ProductRow[];
+  tenantSlug: string;
+  currency: string;
+};
+
+export function InventoryView({ products: initialProducts, tenantSlug, currency }: InventoryViewProps) {
+  const router = useRouter();
+  const [products, setProducts] = useState(initialProducts);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "low" | "out">("all");
@@ -63,6 +75,11 @@ export function InventoryView({ products }: { products: ProductRow[] }) {
 
   const showComingSoon = (feature: string) => {
     setToast(`${feature} - Coming soon!`);
+  };
+
+  const handleProductAdded = () => {
+    router.refresh();
+    setToast("Product added successfully!");
   };
 
   const filtered = useMemo(() => {
@@ -103,8 +120,6 @@ export function InventoryView({ products }: { products: ProductRow[] }) {
     return { total, lowStock, outOfStock, totalValue };
   }, [products]);
 
-  const currency = products[0]?.currency || "USD";
-
   const toggleSort = (field: "name" | "stock" | "price") => {
     if (sortBy === field) {
       setSortDir(sortDir === "asc" ? "desc" : "asc");
@@ -142,7 +157,7 @@ export function InventoryView({ products }: { products: ProductRow[] }) {
           </div>
 
           <button
-            onClick={() => showComingSoon("Add Product")}
+            onClick={() => setIsAddDialogOpen(true)}
             className="px-5 py-3 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-2 hover:bg-primary-600 transition-colors shadow-lg"
           >
             <Plus className="w-5 h-5" />
@@ -434,6 +449,15 @@ export function InventoryView({ products }: { products: ProductRow[] }) {
           </div>
         </div>
       )}
+
+      {/* Add Product Dialog */}
+      <AddProductDialog
+        isOpen={isAddDialogOpen}
+        onClose={() => setIsAddDialogOpen(false)}
+        tenantSlug={tenantSlug}
+        currency={currency}
+        onProductAdded={handleProductAdded}
+      />
     </div>
   );
 }

@@ -24,6 +24,8 @@ export default async function TenantInventoryPage({ params }: { params: { tenant
 
   return (
     <InventoryView
+      tenantSlug={tenant.slug}
+      currency={tenant.currency}
       products={products.map((p) => {
         const onHand = p.stockItems.reduce((sum, s) => sum + s.onHand, 0);
         const reserved = p.stockItems.reduce((sum, s) => sum + s.reserved, 0);

@@ -173,6 +173,7 @@ model Tenant {
   invoices           Invoice[]
   inventoryMovements InventoryMovement[]
   paymentConnections PaymentConnection[]
+  posCashSessions    PosCashSession[]
 
   @@index([slug])
   @@index([ownerEmail])
@@ -223,6 +224,8 @@ model TenantUser {
 
   posSessions PosSession[]
   openedPosOrders PosOrder[] @relation("PosOrderOpenedBy")
+  openedCashSessions PosCashSession[] @relation("CashSessionOpenedBy")
+  closedCashSessions PosCashSession[] @relation("CashSessionClosedBy")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -234,6 +237,7 @@ enum TenantUserRole {
   ADMIN
   MANAGER
   STAFF
+  KITCHEN
 }
 
 model Product {
@@ -442,6 +446,39 @@ model PosSession {
 
   @@index([tenantUserId])
   @@index([token])
+}
+
+// Cash Register Session (Opening/Closing Control)
+model PosCashSession {
+  id              String   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  openedById      String
+  openedBy        TenantUser @relation("CashSessionOpenedBy", fields: [openedById], references: [id], onDelete: Cascade)
+  closedById      String?
+  closedBy        TenantUser? @relation("CashSessionClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  status          PosCashSessionStatus @default(OPEN)
+  openingCashCents Int     @default(0)
+  closingCashCents Int?
+  expectedCashCents Int?
+  cashDifferenceCents Int?
+  currency        String   @default("AED")
+  notes           String?  @db.Text
+  closingNotes    String?  @db.Text
+  openedAt        DateTime @default(now())
+  closedAt        DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([openedById])
+  @@index([status])
+  @@index([openedAt])
+}
+
+enum PosCashSessionStatus {
+  OPEN
+  CLOSED
 }
 
 model Warehouse {

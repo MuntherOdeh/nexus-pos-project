@@ -272,51 +272,7 @@ export async function seedDemoTenantData(params: {
     ],
   });
 
-  // Create a sample in-progress order for KDS/checkout demo
-  const demoTable = await prisma.posTable.findFirst({
-    where: { tenantId, floorId: floorMain.id, isActive: true },
-    orderBy: { createdAt: "asc" },
-    select: { id: true },
-  });
-
-  if (demoTable) {
-    const orderItems = createdProducts
-      .slice(0, Math.min(3, createdProducts.length))
-      .map((p, idx) => ({
-        productId: p.id,
-        productName: p.name,
-        unitPriceCents: p.priceCents,
-        quantity: idx === 0 ? 2 : 1,
-        status: idx === 0 ? ("IN_PROGRESS" as const) : ("SENT" as const),
-      }));
-
-    const subtotalCents = orderItems.reduce((sum, item) => sum + item.unitPriceCents * item.quantity, 0);
-    const taxCents = Math.round(subtotalCents * getPosTaxRate());
-    const totalCents = centsSum(subtotalCents, taxCents);
-
-    await prisma.posOrder.create({
-      data: {
-        tenantId,
-        tableId: demoTable.id,
-        status: "IN_KITCHEN",
-        orderNumber: `POS-DEMO-${randomInt(1000, 9999)}`,
-        subtotalCents,
-        taxCents,
-        totalCents,
-        currency,
-        sentToKitchenAt: new Date(),
-        items: {
-          create: orderItems.map((i) => ({
-            productId: i.productId,
-            productName: i.productName,
-            unitPriceCents: i.unitPriceCents,
-            quantity: i.quantity,
-            status: i.status,
-          })),
-        },
-      },
-    });
-  }
+  // No demo orders are created - start fresh for each tenant
 
   const movementTemplates: Array<{
     type: InventoryMovementType;
@@ -359,64 +315,7 @@ export async function seedDemoTenantData(params: {
     }
   }
 
-  const customers = [
-    { name: "Al Ain Catering", email: "ops@alaincatering.example" },
-    { name: "Downtown Coffee Club", email: "hello@coffeeclub.example" },
-    { name: "Sunset Retail", email: "finance@sunsetretail.example" },
-  ];
-
-  const invoiceStatuses: InvoiceStatus[] = ["PAID", "SENT", "OVERDUE", "DRAFT"];
-
-  for (let i = 0; i < 7; i += 1) {
-    const customer = customers[i % customers.length];
-    const status = invoiceStatuses[i % invoiceStatuses.length];
-    const issuedAt = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-    const lineCount = randomInt(2, Math.min(4, createdProducts.length));
-    const picked = createdProducts
-      .slice()
-      .sort(() => Math.random() - 0.5)
-      .slice(0, lineCount);
-
-    const lines = picked.map((product) => {
-      const quantity = randomInt(1, 3);
-      const unitPriceCents = product.priceCents;
-      const lineTotalCents = unitPriceCents * quantity;
-      return {
-        productId: product.id,
-        description: product.name,
-        quantity,
-        unitPriceCents,
-        lineTotalCents,
-      };
-    });
-
-    const subtotalCents = lines.reduce((sum, line) => sum + line.lineTotalCents, 0);
-    const taxCents = Math.round(subtotalCents * 0.05);
-    const totalCents = centsSum(subtotalCents, taxCents);
-
-    await prisma.invoice.create({
-      data: {
-        tenantId,
-        number: makeInvoiceNumber(),
-        status,
-        customerName: customer.name,
-        customerEmail: customer.email,
-        issuedAt,
-        dueAt: new Date(issuedAt.getTime() + 7 * 24 * 60 * 60 * 1000),
-        subtotalCents,
-        taxCents,
-        totalCents,
-        currency,
-        lines: {
-          create: lines.map((line) => ({
-            productId: line.productId,
-            description: line.description,
-            quantity: line.quantity,
-            unitPriceCents: line.unitPriceCents,
-            lineTotalCents: line.lineTotalCents,
-          })),
-        },
-      },
-    });
-  }
+  // Note: No demo invoices or orders are created.
+  // Dashboard will start empty, showing real data only after users create orders.
+  // This prevents the issue of showing "same data" for every new POS instance.
 }
