@@ -1977,11 +1977,13 @@ function ProductCard({
   categoryColor,
   onClick,
   disabled,
+  isBusy,
 }: {
   product: CatalogProduct;
   categoryColor: { bg: string; text: string; light: string; border: string };
   onClick: () => void;
   disabled: boolean;
+  isBusy?: boolean;
 }) {
   const ProductIcon = getProductIcon(product.name);
 
@@ -1990,9 +1992,12 @@ function ProductCard({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "rounded-2xl p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-wait shadow-md hover:shadow-lg",
+        "rounded-2xl p-4 text-left transition-all shadow-md",
         categoryColor.bg,
-        "text-white relative overflow-hidden"
+        "text-white relative overflow-hidden",
+        disabled && !isBusy && "opacity-60 cursor-not-allowed grayscale-[30%]",
+        isBusy && "opacity-70 cursor-wait animate-pulse",
+        !disabled && "hover:scale-[1.02] active:scale-[0.98] hover:shadow-lg"
       )}
     >
       {/* Background decoration */}
@@ -2029,25 +2034,145 @@ function ProductCard({
 
 function EmptyProductState({
   onAddProduct,
+  tenantSlug,
+  onSampleLoaded,
 }: {
   onAddProduct: () => void;
+  tenantSlug: string;
+  onSampleLoaded: () => void;
 }) {
+  const [loading, setLoading] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadSuccess, setLoadSuccess] = useState<string | null>(null);
+
+  const loadAllSampleData = async () => {
+    setLoading("all");
+    setLoadError(null);
+    setLoadSuccess(null);
+    try {
+      // Load products first
+      const productsRes = await fetch(`/api/pos/tenants/${tenantSlug}/products/sample`, {
+        method: "POST",
+      });
+      const productsData = await productsRes.json();
+
+      // Load tables
+      const tablesRes = await fetch(`/api/pos/tenants/${tenantSlug}/tables/sample`, {
+        method: "POST",
+      });
+      const tablesData = await tablesRes.json();
+
+      // Load orders (needs products)
+      const ordersRes = await fetch(`/api/pos/tenants/${tenantSlug}/orders/sample`, {
+        method: "POST",
+      });
+      const ordersData = await ordersRes.json();
+
+      const messages = [];
+      if (productsData.success) messages.push(`${productsData.productsCreated || "sample"} products`);
+      if (tablesData.success) messages.push(`${tablesData.tablesCreated} tables`);
+      if (ordersData.success) messages.push(`${ordersData.ordersCreated} orders`);
+
+      if (messages.length > 0) {
+        setLoadSuccess(`Loaded ${messages.join(", ")}`);
+        setTimeout(() => onSampleLoaded(), 1000);
+      } else {
+        setLoadError("Sample data may already exist");
+      }
+    } catch {
+      setLoadError("Network error. Please try again.");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const loadSampleProducts = async () => {
+    setLoading("products");
+    setLoadError(null);
+    setLoadSuccess(null);
+    try {
+      const response = await fetch(`/api/pos/tenants/${tenantSlug}/products/sample`, {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setLoadSuccess(`Loaded ${data.productsCreated || "sample"} products`);
+        setTimeout(() => onSampleLoaded(), 1000);
+      } else {
+        setLoadError(data.error || "Failed to load sample products");
+      }
+    } catch {
+      setLoadError("Network error. Please try again.");
+    } finally {
+      setLoading(null);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-      <div className="w-24 h-24 rounded-full bg-primary-500/10 flex items-center justify-center mb-6">
-        <Package className="w-12 h-12 text-primary-500" />
+      <div className="w-28 h-28 rounded-3xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center mb-6 border border-[var(--pos-border)]">
+        <div className="w-20 h-20 rounded-2xl bg-[var(--pos-panel)] flex items-center justify-center shadow-lg">
+          <Package className="w-10 h-10 text-amber-500" />
+        </div>
       </div>
-      <h3 className="font-bold text-xl mb-2">No Products Yet</h3>
-      <p className="text-[var(--pos-muted)] max-w-sm mb-6">
-        Add products to your catalog to start selling. You can also add custom items directly to orders.
+      <h3 className="font-bold text-2xl mb-2">No Products Yet</h3>
+      <p className="text-[var(--pos-muted)] max-w-md mb-8">
+        Load sample data to explore the POS, or create products manually.
       </p>
-      <button
-        onClick={onAddProduct}
-        className="px-6 py-3 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-2 hover:bg-primary-600 transition-colors"
-      >
-        <Plus className="w-5 h-5" />
-        Add Custom Item
-      </button>
+
+      {loadError && (
+        <div className="mb-4 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
+          {loadError}
+        </div>
+      )}
+
+      {loadSuccess && (
+        <div className="mb-4 px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-sm">
+          {loadSuccess}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-3 w-full max-w-xs">
+        <button
+          onClick={loadAllSampleData}
+          disabled={loading !== null}
+          className="px-6 py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-lg flex items-center justify-center gap-3 hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg"
+        >
+          {loading === "all" ? (
+            <>
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Loading...
+            </>
+          ) : (
+            <>
+              <Zap className="w-5 h-5" />
+              Load All Sample Data
+            </>
+          )}
+        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={loadSampleProducts}
+            disabled={loading !== null}
+            className="flex-1 px-4 py-3 rounded-xl border border-[var(--pos-border)] bg-[var(--pos-panel)] text-[var(--pos-text)] font-medium flex items-center justify-center gap-2 hover:bg-[var(--pos-bg)] transition-colors disabled:opacity-50"
+          >
+            {loading === "products" ? (
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4" />
+            )}
+            Products Only
+          </button>
+          <button
+            onClick={onAddProduct}
+            disabled={loading !== null}
+            className="flex-1 px-4 py-3 rounded-xl border border-[var(--pos-border)] bg-[var(--pos-panel)] text-[var(--pos-text)] font-medium flex items-center justify-center gap-2 hover:bg-[var(--pos-bg)] transition-colors disabled:opacity-50"
+          >
+            <Plus className="w-4 h-4" />
+            Create
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2325,6 +2450,12 @@ export function CheckoutView({
       return;
     }
 
+    // Find product name for toast feedback
+    const productName = catalog.categories
+      .flatMap(c => c.products)
+      .concat(catalog.uncategorized)
+      .find(p => p.id === productId)?.name || "Item";
+
     setError(null);
     setBusyKey(`add:${productId}`);
     try {
@@ -2339,6 +2470,7 @@ export function CheckoutView({
         return;
       }
       setActiveOrder(data.order);
+      setToast(`Added: ${productName}`);
       await refreshOpenOrders();
     } finally {
       setBusyKey(null);
@@ -2513,6 +2645,48 @@ export function CheckoutView({
     }
   };
 
+  const loadSampleData = async () => {
+    setBusyKey("load-sample");
+    setError(null);
+
+    try {
+      // Load sample products
+      const productsRes = await fetch(`/api/pos/tenants/${tenant.slug}/products/sample`, {
+        method: "POST",
+      });
+      if (!productsRes.ok) {
+        throw new Error("Failed to load sample products");
+      }
+
+      // Load sample tables
+      const tablesRes = await fetch(`/api/pos/tenants/${tenant.slug}/tables/sample`, {
+        method: "POST",
+      });
+      if (!tablesRes.ok) {
+        throw new Error("Failed to load sample tables");
+      }
+
+      // Load sample orders
+      const ordersRes = await fetch(`/api/pos/tenants/${tenant.slug}/orders/sample`, {
+        method: "POST",
+      });
+      if (!ordersRes.ok) {
+        throw new Error("Failed to load sample orders");
+      }
+
+      setToast("Sample data loaded! Refreshing...");
+
+      // Refresh the page to reload all data
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load sample data");
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
   const getItemTotal = (item: OrderItem) => item.unitPriceCents * item.quantity;
 
   return (
@@ -2641,6 +2815,19 @@ export function CheckoutView({
                     )}
 
                     <button
+                      onClick={loadSampleData}
+                      disabled={busyKey === "load-sample"}
+                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold text-sm flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+                    >
+                      {busyKey === "load-sample" ? (
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <Package className="w-4 h-4" />
+                      )}
+                      Load Demo
+                    </button>
+
+                    <button
                       onClick={startQuickSale}
                       disabled={busyKey === "quick-sale"}
                       className="px-6 py-3 rounded-xl bg-primary-500 text-white font-semibold text-sm flex items-center gap-2 hover:bg-primary-600 transition-colors disabled:opacity-50 shadow-lg"
@@ -2700,19 +2887,38 @@ export function CheckoutView({
 
                 {(!activeFloor?.tables || activeFloor.tables.length === 0) && (
                   <div className="flex flex-col items-center justify-center h-full text-[var(--pos-muted)]">
-                    <div className="w-24 h-24 rounded-full bg-primary-500/10 flex items-center justify-center mb-6">
-                      <Grid3X3 className="w-12 h-12 text-primary-500" />
+                    <div className="w-24 h-24 rounded-full bg-amber-500/10 flex items-center justify-center mb-6">
+                      <Grid3X3 className="w-12 h-12 text-amber-500" />
                     </div>
                     <p className="text-xl font-semibold mb-2">No Tables Configured</p>
-                    <p className="text-sm mb-6">Add tables in settings or use Quick Sale mode</p>
-                    <button
-                      onClick={startQuickSale}
-                      disabled={busyKey === "quick-sale"}
-                      className="px-8 py-4 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-3 hover:bg-primary-600 transition-colors shadow-lg"
-                    >
-                      <Plus className="w-6 h-6" />
-                      Start Quick Sale
-                    </button>
+                    <p className="text-sm mb-6">Load sample data to get started, or use Quick Sale mode</p>
+                    <div className="flex flex-col gap-3">
+                      <button
+                        onClick={loadSampleData}
+                        disabled={busyKey === "load-sample"}
+                        className="px-8 py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold flex items-center justify-center gap-3 hover:opacity-90 transition-opacity shadow-lg disabled:opacity-50"
+                      >
+                        {busyKey === "load-sample" ? (
+                          <>
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Loading...
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-5 h-5" />
+                            Load Sample Data
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={startQuickSale}
+                        disabled={busyKey === "quick-sale"}
+                        className="px-8 py-4 rounded-xl border border-[var(--pos-border)] bg-[var(--pos-panel)] text-[var(--pos-text)] font-semibold flex items-center justify-center gap-3 hover:bg-[var(--pos-bg)] transition-colors"
+                      >
+                        <Plus className="w-5 h-5" />
+                        Start Quick Sale
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -2778,10 +2984,33 @@ export function CheckoutView({
                 </div>
               </div>
 
+              {/* No Active Order Banner */}
+              {!activeOrder && (
+                <div className="mx-4 mt-4 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 text-amber-500" />
+                    <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                      Start an order to add products
+                    </span>
+                  </div>
+                  <button
+                    onClick={startQuickSale}
+                    disabled={busyKey === "quick-sale"}
+                    className="px-4 py-2 rounded-lg bg-amber-500 text-white font-medium text-sm hover:bg-amber-600 transition-colors disabled:opacity-50"
+                  >
+                    {busyKey === "quick-sale" ? "Starting..." : "Quick Sale"}
+                  </button>
+                </div>
+              )}
+
               {/* Products Grid */}
               <div className="flex-1 overflow-auto p-4">
                 {!hasProducts && filteredProducts.length === 0 ? (
-                  <EmptyProductState onAddProduct={() => setAddCustomProductOpen(true)} />
+                  <EmptyProductState
+                    onAddProduct={() => setAddCustomProductOpen(true)}
+                    tenantSlug={tenant.slug}
+                    onSampleLoaded={() => window.location.reload()}
+                  />
                 ) : filteredProducts.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-[50vh] text-[var(--pos-muted)]">
                     <Search className="w-16 h-16 mb-4 opacity-50" />
@@ -2810,6 +3039,7 @@ export function CheckoutView({
                           categoryColor={colors}
                           onClick={() => addProduct(product.id)}
                           disabled={isBusy || !activeOrder}
+                          isBusy={isBusy}
                         />
                       );
                     })}

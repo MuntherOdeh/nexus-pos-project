@@ -27,6 +27,7 @@ export async function GET(request: NextRequest, context: { params: { tenant: str
       sentToKitchenAt: true,
       closedAt: true,
       table: { select: { id: true, name: true, capacity: true } },
+      customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, loyaltyPoints: true } },
       items: {
         orderBy: { createdAt: "asc" },
         select: {

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getTenantBySlug } from "@/lib/tenants";
 import { getTenantSlugFromHost } from "@/lib/tenant-slug";
 import { PosShell } from "@/components/pos/PosShell";
+import { getPosThemeClass } from "@/lib/pos/theme";
 
 export default async function TenantPosAppLayout({
   children,
@@ -48,24 +49,30 @@ export default async function TenantPosAppLayout({
     redirect(hostTenant ? "/login" : `/t/${tenant.slug}/pos/login`);
   }
 
+  // Apply theme class server-side to prevent flash on page load
+  const initialThemeClass = getPosThemeClass(tenant.theme);
+
   return (
-    <PosShell
-      tenant={{
-        slug: tenant.slug,
-        name: tenant.name,
-        industry: tenant.industry,
-        theme: tenant.theme,
-      }}
-      user={{
-        id: session.tenantUser.id,
-        email: session.tenantUser.email,
-        firstName: session.tenantUser.firstName,
-        lastName: session.tenantUser.lastName,
-        role: session.tenantUser.role,
-      }}
-    >
-      {children}
-    </PosShell>
+    <div className={`pos-theme ${initialThemeClass}`} data-pos-theme-wrapper>
+      <PosShell
+        tenant={{
+          slug: tenant.slug,
+          name: tenant.name,
+          industry: tenant.industry,
+          theme: tenant.theme,
+        }}
+        user={{
+          id: session.tenantUser.id,
+          email: session.tenantUser.email,
+          firstName: session.tenantUser.firstName,
+          lastName: session.tenantUser.lastName,
+          role: session.tenantUser.role,
+        }}
+        initialThemeClass={initialThemeClass}
+      >
+        {children}
+      </PosShell>
+    </div>
   );
 }
 

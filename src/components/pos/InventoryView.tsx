@@ -27,6 +27,7 @@ import {
 import { formatMoney } from "@/lib/pos/format";
 import { cn } from "@/lib/utils";
 import { AddProductDialog } from "./AddProductDialog";
+import { EditProductDialog } from "./EditProductDialog";
 
 type WarehouseStock = {
   warehouseName: string;
@@ -58,6 +59,8 @@ export function InventoryView({ products: initialProducts, tenantSlug, currency 
   const router = useRouter();
   const [products, setProducts] = useState(initialProducts);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ProductRow | null>(null);
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "low" | "out">("all");
@@ -80,6 +83,17 @@ export function InventoryView({ products: initialProducts, tenantSlug, currency 
   const handleProductAdded = () => {
     router.refresh();
     setToast("Product added successfully!");
+  };
+
+  const handleProductUpdated = () => {
+    router.refresh();
+    setToast("Product updated successfully!");
+    setEditingProduct(null);
+  };
+
+  const handleEditProduct = (product: ProductRow) => {
+    setEditingProduct(product);
+    setIsEditDialogOpen(true);
   };
 
   const filtered = useMemo(() => {
@@ -418,7 +432,7 @@ export function InventoryView({ products: initialProducts, tenantSlug, currency 
               {/* Actions */}
               <div className="grid grid-cols-2 gap-3 pt-4">
                 <button
-                  onClick={() => showComingSoon("Edit Product")}
+                  onClick={() => handleEditProduct(selected)}
                   className="px-4 py-3 rounded-xl border border-[color:var(--pos-border)] font-medium flex items-center justify-center gap-2 hover:bg-[var(--pos-bg)] transition-colors"
                 >
                   <Edit3 className="w-4 h-4" />
@@ -457,6 +471,19 @@ export function InventoryView({ products: initialProducts, tenantSlug, currency 
         tenantSlug={tenantSlug}
         currency={currency}
         onProductAdded={handleProductAdded}
+      />
+
+      {/* Edit Product Dialog */}
+      <EditProductDialog
+        isOpen={isEditDialogOpen}
+        onClose={() => {
+          setIsEditDialogOpen(false);
+          setEditingProduct(null);
+        }}
+        tenantSlug={tenantSlug}
+        currency={currency}
+        product={editingProduct}
+        onProductUpdated={handleProductUpdated}
       />
     </div>
   );

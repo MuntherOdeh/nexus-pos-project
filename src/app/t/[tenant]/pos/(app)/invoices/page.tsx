@@ -25,6 +25,7 @@ export default async function TenantInvoicesPage({ params }: { params: { tenant:
 
   return (
     <InvoicesView
+      tenantSlug={tenant.slug}
       invoices={invoices.map((inv) => ({
         id: inv.id,
         number: inv.number,

@@ -24,10 +24,20 @@ import {
   Plus,
   Banknote,
   ClipboardList,
+  Users,
+  UserCircle,
+  BarChart3,
+  Tag,
+  Warehouse,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { POS_THEMES, type PosThemeKey, normalizePosTheme } from "@/lib/pos/theme";
 import { OpeningControlDialog } from "./OpeningControlDialog";
+import { ToastProvider } from "./ToastProvider";
+import { QuickSearchDialog } from "./QuickSearchDialog";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { OfflineBanner } from "./OfflineBanner";
+import { PosErrorBoundary } from "./PosErrorBoundary";
 
 type TenantShell = {
   slug: string;
@@ -66,10 +76,12 @@ export function PosShell({
   tenant,
   user,
   children,
+  initialThemeClass,
 }: {
   tenant: TenantShell;
   user?: { id: string; email: string; firstName: string; lastName: string; role: string };
   children: React.ReactNode;
+  initialThemeClass?: string;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -79,12 +91,52 @@ export function PosShell({
 
   const [theme, setTheme] = useState<PosThemeKey>(() => normalizePosTheme(tenant.theme));
   const [industry, setIndustry] = useState<string>(tenant.industry);
+
+  // Apply saved theme from localStorage on mount to prevent flash
+  useEffect(() => {
+    const savedTheme = localStorage.getItem(`pos-theme-${tenant.slug}`);
+    if (savedTheme && (savedTheme === "LIGHT" || savedTheme === "DARK")) {
+      setTheme(savedTheme as PosThemeKey);
+      // Update the wrapper class immediately
+      const wrapper = document.querySelector('[data-pos-theme-wrapper]');
+      if (wrapper) {
+        wrapper.className = `pos-theme ${POS_THEMES[savedTheme as PosThemeKey].className}`;
+      }
+    }
+  }, [tenant.slug]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [isOpeningControlOpen, setIsOpeningControlOpen] = useState(false);
   const [currentCashSession, setCurrentCashSession] = useState<any>(null);
   const [cashSessionChecked, setCashSessionChecked] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    shortcuts: [
+      {
+        key: 'k',
+        ctrl: true,
+        handler: () => setIsSearchOpen(true),
+        description: 'Open quick search',
+      },
+      {
+        key: 'n',
+        ctrl: true,
+        handler: () => router.push(isPathBased ? `${base}/checkout` : '/checkout'),
+        description: 'New sale',
+      },
+      {
+        key: 'Escape',
+        handler: () => {
+          setIsSearchOpen(false);
+          setIsOpeningControlOpen(false);
+        },
+        description: 'Close dialogs',
+      },
+    ],
+  });
 
   const themeClass = useMemo(() => POS_THEMES[theme].className, [theme]);
   const isDark = theme === "DARK";
@@ -128,8 +180,13 @@ export function PosShell({
       { href: isPathBased ? `${base}/checkout` : "/checkout", label: "Point of Sale", icon: ShoppingCart, color: "text-emerald-500", roles: ["OWNER", "ADMIN", "MANAGER", "STAFF"] },
       { href: isPathBased ? `${base}/orders` : "/orders", label: "Active Orders", icon: ClipboardList, color: "text-cyan-500", roles: ["OWNER", "ADMIN", "MANAGER", "STAFF"] },
       { href: isPathBased ? `${base}/kds` : "/kds", label: "Kitchen Display", icon: ChefHat, color: "text-orange-500", roles: ["OWNER", "ADMIN", "MANAGER", "KITCHEN"] },
-      { href: isPathBased ? `${base}/invoices` : "/invoices", label: "Invoices", icon: Receipt, color: "text-purple-500", roles: ["OWNER", "ADMIN", "MANAGER"] },
+      { href: isPathBased ? `${base}/customers` : "/customers", label: "Customers", icon: UserCircle, color: "text-teal-500", roles: ["OWNER", "ADMIN", "MANAGER", "STAFF"] },
+      { href: isPathBased ? `${base}/employees` : "/employees", label: "Employees", icon: Users, color: "text-indigo-500", roles: ["OWNER", "ADMIN", "MANAGER"] },
       { href: isPathBased ? `${base}/inventory` : "/inventory", label: "Products", icon: Boxes, color: "text-pink-500", roles: ["OWNER", "ADMIN", "MANAGER"] },
+      { href: isPathBased ? `${base}/stock` : "/stock", label: "Inventory", icon: Warehouse, color: "text-lime-500", roles: ["OWNER", "ADMIN", "MANAGER"] },
+      { href: isPathBased ? `${base}/discounts` : "/discounts", label: "Discounts", icon: Tag, color: "text-rose-500", roles: ["OWNER", "ADMIN", "MANAGER"] },
+      { href: isPathBased ? `${base}/reports` : "/reports", label: "Reports", icon: BarChart3, color: "text-violet-500", roles: ["OWNER", "ADMIN", "MANAGER"] },
+      { href: isPathBased ? `${base}/invoices` : "/invoices", label: "Invoices", icon: Receipt, color: "text-purple-500", roles: ["OWNER", "ADMIN", "MANAGER"] },
       { href: isPathBased ? `${base}/logistics` : "/logistics", label: "Logistics", icon: Truck, color: "text-amber-500", roles: ["OWNER", "ADMIN", "MANAGER"] },
     ],
     [base, isPathBased]
@@ -147,6 +204,13 @@ export function PosShell({
 
   const updateTheme = (next: PosThemeKey) => {
     setTheme(next);
+    // Save to localStorage for instant persistence on refresh
+    localStorage.setItem(`pos-theme-${tenant.slug}`, next);
+    // Update the parent wrapper's class for immediate visual change
+    const wrapper = document.querySelector('[data-pos-theme-wrapper]');
+    if (wrapper) {
+      wrapper.className = `pos-theme ${POS_THEMES[next].className}`;
+    }
     startTransition(async () => {
       try {
         await fetch("/api/pos/tenant/settings", {
@@ -186,12 +250,10 @@ export function PosShell({
         setIndustry,
       }}
     >
+      <ToastProvider>
+      <OfflineBanner />
       <div
-        className={cn(
-          "pos-theme",
-          themeClass,
-          "min-h-screen bg-[var(--pos-bg)] text-[var(--pos-text)] transition-colors duration-300"
-        )}
+        className="min-h-screen bg-[var(--pos-bg)] text-[var(--pos-text)] transition-colors duration-300"
       >
         <div className="min-h-screen flex">
           {/* Mobile backdrop */}
@@ -265,7 +327,10 @@ export function PosShell({
             {!isSidebarCollapsed && (
               <div className="px-4 py-3 border-b border-[color:var(--pos-border)]">
                 <div className="flex items-center gap-2">
-                  <button className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] text-sm text-[var(--pos-muted)] hover:border-[var(--pos-accent)] transition-colors">
+                  <button
+                    onClick={() => setIsSearchOpen(true)}
+                    className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] text-sm text-[var(--pos-muted)] hover:border-[var(--pos-accent)] transition-colors"
+                  >
                     <Search className="w-4 h-4" />
                     <span>Search...</span>
                     <kbd className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-[var(--pos-border)] text-[var(--pos-muted)]">⌘K</kbd>
@@ -475,7 +540,9 @@ export function PosShell({
 
             {/* Page Content */}
             <main className="flex-1 p-4 lg:p-6 overflow-auto">
-              {children}
+              <PosErrorBoundary>
+                {children}
+              </PosErrorBoundary>
             </main>
           </div>
         </div>
@@ -489,9 +556,19 @@ export function PosShell({
           currentSession={currentCashSession}
           onSessionChange={(session) => {
             setCurrentCashSession(session);
+            // Refresh router to update server-rendered dashboard data
+            router.refresh();
           }}
         />
+
+        {/* Quick Search Dialog */}
+        <QuickSearchDialog
+          isOpen={isSearchOpen}
+          onClose={() => setIsSearchOpen(false)}
+          tenantSlug={tenant.slug}
+        />
       </div>
+      </ToastProvider>
     </PosShellContext.Provider>
   );
 }

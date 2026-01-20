@@ -175,6 +175,20 @@ model Tenant {
   paymentConnections PaymentConnection[]
   posCashSessions    PosCashSession[]
 
+  // Revel POS-like relations
+  timeClockEntries   TimeClockEntry[]
+  customers          Customer[]
+  loyaltyProgram     LoyaltyProgram?
+  discounts          Discount[]
+  modifierGroups     ModifierGroup[]
+  taxRates           TaxRate[]
+  tips               Tip[]
+  voidRefunds        VoidRefund[]
+  gratuitySetting    GratuitySetting?
+  shiftSummaries     ShiftSummary[]
+  prepTimeLogs       PrepTimeLog[]
+  menuSchedules      MenuSchedule[]
+
   @@index([slug])
   @@index([ownerEmail])
   @@index([industry])
@@ -227,6 +241,12 @@ model TenantUser {
   openedCashSessions PosCashSession[] @relation("CashSessionOpenedBy")
   closedCashSessions PosCashSession[] @relation("CashSessionClosedBy")
 
+  // Revel POS-like relations
+  timeClockEntries TimeClockEntry[]
+  tips             Tip[] @relation("EmployeeTips")
+  voidsApproved    VoidRefund[] @relation("VoidApprovedBy")
+  voidsCreated     VoidRefund[] @relation("VoidCreatedBy")
+
   @@unique([tenantId, email])
   @@index([tenantId])
   @@index([email])
@@ -258,6 +278,7 @@ model Product {
   invoiceLines               InvoiceLine[]
   inventoryMovementLineItems InventoryMovementLine[]
   posOrderItems              PosOrderItem[]
+  modifierGroups             ProductModifierGroup[]
 
   @@unique([tenantId, name])
   @@index([tenantId])
@@ -336,6 +357,8 @@ model PosOrder {
   table     PosTable? @relation(fields: [tableId], references: [id], onDelete: SetNull)
   openedById String?
   openedBy  TenantUser? @relation("PosOrderOpenedBy", fields: [openedById], references: [id], onDelete: SetNull)
+  customerId String?
+  customer  Customer? @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: SetNull)
   status    PosOrderStatus @default(OPEN)
   orderNumber String
   notes     String?  @db.Text
@@ -343,6 +366,7 @@ model PosOrder {
   discountCents Int  @default(0)
   taxCents  Int      @default(0)
   totalCents Int     @default(0)
+  tipCents  Int      @default(0)
   currency  String   @default("AED")
   openedAt  DateTime @default(now())
   sentToKitchenAt DateTime?
@@ -352,6 +376,10 @@ model PosOrder {
 
   items     PosOrderItem[]
   payments  PosPayment[]
+  appliedDiscounts AppliedDiscount[]
+  tips      Tip[]
+  voidRefunds VoidRefund[]
+  prepTimeLogs PrepTimeLog[]
 
   @@unique([tenantId, orderNumber])
   @@index([tenantId])
@@ -383,6 +411,8 @@ model PosOrderItem {
   status         PosOrderItemStatus @default(NEW)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  modifiers      OrderItemModifier[]
 
   @@index([orderId])
   @@index([productId])
@@ -469,6 +499,8 @@ model PosCashSession {
   closedAt        DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  shiftSummary    ShiftSummary?
 
   @@index([tenantId])
   @@index([openedById])
@@ -635,4 +667,392 @@ enum PaymentConnectionStatus {
   DISCONNECTED
   PENDING
   CONNECTED
+}
+
+// ==========================================
+// REVEL POS-LIKE FEATURES
+// ==========================================
+
+// Employee Time Clock
+model TimeClockEntry {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId   String
+  employee     TenantUser @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  clockInAt    DateTime
+  clockOutAt   DateTime?
+  breakMinutes Int      @default(0)
+  notes        String?
+  status       TimeClockStatus @default(CLOCKED_IN)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([clockInAt])
+  @@index([status])
+}
+
+enum TimeClockStatus {
+  CLOCKED_IN
+  ON_BREAK
+  CLOCKED_OUT
+}
+
+// Customer CRM
+model Customer {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  firstName    String
+  lastName     String
+  email        String?
+  phone        String?
+  dateOfBirth  DateTime?
+  notes        String?  @db.Text
+  tags         String[] @default([])
+  loyaltyPoints Int     @default(0)
+  totalSpentCents Int   @default(0)
+  visitCount   Int      @default(0)
+  lastVisitAt  DateTime?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  loyaltyTransactions LoyaltyTransaction[]
+  orders              PosOrder[] @relation("CustomerOrders")
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([phone])
+  @@index([loyaltyPoints])
+}
+
+// Loyalty Program
+model LoyaltyProgram {
+  id               String   @id @default(cuid())
+  tenantId         String   @unique
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name             String   @default("Loyalty Program")
+  pointsPerDollar  Int      @default(1)
+  pointsToRedeem   Int      @default(100)
+  redeemValue      Int      @default(100)  // In cents
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tiers            LoyaltyTier[]
+}
+
+model LoyaltyTier {
+  id              String   @id @default(cuid())
+  programId       String
+  program         LoyaltyProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  name            String
+  minPoints       Int
+  multiplier      Float    @default(1.0)
+  benefits        String?  @db.Text
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  @@index([programId])
+  @@index([minPoints])
+}
+
+model LoyaltyTransaction {
+  id           String   @id @default(cuid())
+  customerId   String
+  customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  type         LoyaltyTransactionType
+  points       Int
+  orderId      String?
+  description  String?
+  createdAt    DateTime @default(now())
+
+  @@index([customerId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum LoyaltyTransactionType {
+  EARN
+  REDEEM
+  ADJUST
+  EXPIRE
+  BONUS
+}
+
+// Discounts & Promotions
+model Discount {
+  id             String   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name           String
+  code           String?
+  type           DiscountType
+  value          Int      // Cents for FIXED, basis points for PERCENTAGE (e.g., 1000 = 10%)
+  minOrderCents  Int?     // Minimum order value
+  maxUsageCount  Int?     // Max times this can be used
+  usageCount     Int      @default(0)
+  applicableTo   DiscountApplicableTo @default(ORDER)
+  categoryIds    String[] @default([])
+  productIds     String[] @default([])
+  startDate      DateTime?
+  endDate        DateTime?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  appliedDiscounts AppliedDiscount[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([code])
+  @@index([isActive])
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+  BOGO       // Buy One Get One
+}
+
+enum DiscountApplicableTo {
+  ORDER
+  CATEGORY
+  PRODUCT
+}
+
+model AppliedDiscount {
+  id           String   @id @default(cuid())
+  orderId      String
+  order        PosOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  discountId   String?
+  discount     Discount? @relation(fields: [discountId], references: [id], onDelete: SetNull)
+  name         String
+  type         DiscountType
+  value        Int
+  amountCents  Int      // Actual discount amount applied
+  createdAt    DateTime @default(now())
+
+  @@index([orderId])
+  @@index([discountId])
+}
+
+// Product Modifiers (Add-ons, Variants)
+model ModifierGroup {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name         String
+  minSelections Int     @default(0)
+  maxSelections Int     @default(1)
+  isRequired   Boolean  @default(false)
+  sortOrder    Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  modifiers    Modifier[]
+  productLinks ProductModifierGroup[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model Modifier {
+  id           String   @id @default(cuid())
+  groupId      String
+  group        ModifierGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name         String
+  priceCents   Int      @default(0)
+  isDefault    Boolean  @default(false)
+  sortOrder    Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orderItemModifiers OrderItemModifier[]
+
+  @@index([groupId])
+}
+
+model ProductModifierGroup {
+  id              String   @id @default(cuid())
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  modifierGroupId String
+  modifierGroup   ModifierGroup @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+  sortOrder       Int      @default(0)
+
+  @@unique([productId, modifierGroupId])
+  @@index([productId])
+  @@index([modifierGroupId])
+}
+
+model OrderItemModifier {
+  id           String   @id @default(cuid())
+  orderItemId  String
+  orderItem    PosOrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  modifierId   String?
+  modifier     Modifier? @relation(fields: [modifierId], references: [id], onDelete: SetNull)
+  name         String
+  priceCents   Int      @default(0)
+  quantity     Int      @default(1)
+
+  @@index([orderItemId])
+  @@index([modifierId])
+}
+
+// Tax Configuration
+model TaxRate {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name         String
+  rate         Int      // Basis points (e.g., 500 = 5%)
+  isDefault    Boolean  @default(false)
+  isInclusive  Boolean  @default(false) // Tax included in price
+  appliesTo    TaxAppliesTo @default(ALL)
+  categoryIds  String[] @default([])
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([isDefault])
+}
+
+enum TaxAppliesTo {
+  ALL
+  CATEGORIES
+  DINE_IN
+  TAKEOUT
+}
+
+// Tips Management
+model Tip {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderId      String
+  order        PosOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  employeeId   String?
+  employee     TenantUser? @relation("EmployeeTips", fields: [employeeId], references: [id], onDelete: SetNull)
+  amountCents  Int
+  paymentId    String?
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([orderId])
+  @@index([employeeId])
+  @@index([createdAt])
+}
+
+// Void/Refund Tracking
+model VoidRefund {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderId      String
+  order        PosOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  type         VoidRefundType
+  reason       String
+  amountCents  Int
+  approvedById String?
+  approvedBy   TenantUser? @relation("VoidApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  createdById  String
+  createdBy    TenantUser @relation("VoidCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([orderId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum VoidRefundType {
+  VOID
+  REFUND
+  ITEM_VOID
+  PARTIAL_REFUND
+}
+
+// Auto-Gratuity Settings
+model GratuitySetting {
+  id             String   @id @default(cuid())
+  tenantId       String   @unique
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  minPartySize   Int      @default(6)
+  gratuityRate   Int      @default(1800) // Basis points (e.g., 1800 = 18%)
+  isActive       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// Shift Summary
+model ShiftSummary {
+  id                String   @id @default(cuid())
+  tenantId          String
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cashSessionId     String
+  cashSession       PosCashSession @relation(fields: [cashSessionId], references: [id], onDelete: Cascade)
+  totalSalesCents   Int      @default(0)
+  totalTaxCents     Int      @default(0)
+  totalDiscountsCents Int    @default(0)
+  totalRefundsCents Int      @default(0)
+  totalTipsCents    Int      @default(0)
+  cashPaymentsCents Int      @default(0)
+  cardPaymentsCents Int      @default(0)
+  otherPaymentsCents Int     @default(0)
+  orderCount        Int      @default(0)
+  itemCount         Int      @default(0)
+  voidCount         Int      @default(0)
+  averageOrderCents Int      @default(0)
+  createdAt         DateTime @default(now())
+
+  @@unique([cashSessionId])
+  @@index([tenantId])
+  @@index([createdAt])
+}
+
+// Kitchen Prep Time Tracking
+model PrepTimeLog {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderId      String
+  order        PosOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sentAt       DateTime
+  startedAt    DateTime?
+  completedAt  DateTime?
+  prepTimeSeconds Int?
+  itemCount    Int      @default(1)
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([orderId])
+  @@index([sentAt])
+}
+
+// Menu Schedule (Happy Hour, etc.)
+model MenuSchedule {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name         String
+  startTime    String   // HH:MM format
+  endTime      String   // HH:MM format
+  daysOfWeek   Int[]    // 0 = Sunday, 6 = Saturday
+  priceAdjustment Int   @default(0) // Basis points (negative for discount)
+  categoryIds  String[] @default([])
+  productIds   String[] @default([])
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([isActive])
 }

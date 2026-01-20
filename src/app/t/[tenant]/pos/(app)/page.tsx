@@ -71,6 +71,7 @@ export default async function TenantDashboardPage({ params }: { params: { tenant
     stockItems,
     recentOrders,
     orders7d,
+    activeCashSession,
   ] = await Promise.all([
     // Paid orders revenue (7 days)
     prisma.posOrder.aggregate({
@@ -129,6 +130,21 @@ export default async function TenantDashboardPage({ params }: { params: { tenant
       },
       select: { closedAt: true, totalCents: true },
     }),
+    // Active cash session
+    prisma.posCashSession.findFirst({
+      where: {
+        tenantId: tenant.id,
+        status: "OPEN",
+      },
+      orderBy: { openedAt: "desc" },
+      select: {
+        id: true,
+        openingCashCents: true,
+        currency: true,
+        openedAt: true,
+        openedBy: { select: { firstName: true, lastName: true } },
+      },
+    }),
   ]);
 
   const revenue7d = paidOrdersAgg._sum.totalCents ?? 0;
@@ -179,7 +195,7 @@ export default async function TenantDashboardPage({ params }: { params: { tenant
       </div>
 
       {/* KPI Row */}
-      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid sm:grid-cols-2 xl:grid-cols-5 gap-4">
         <PosCard className="p-5">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -208,6 +224,30 @@ export default async function TenantDashboardPage({ params }: { params: { tenant
               style={{ borderColor: "var(--pos-border)", background: "rgba(255,255,255,0.04)" }}
             >
               <Banknote className="w-5 h-5" style={{ color: "var(--pos-accent)" }} />
+            </div>
+          </div>
+        </PosCard>
+
+        <PosCard className="p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-sm text-[var(--pos-muted)]">Cash Drawer</div>
+              <div className="text-2xl font-bold mt-1">
+                {activeCashSession
+                  ? formatMoney({ cents: activeCashSession.openingCashCents, currency: activeCashSession.currency })
+                  : "—"}
+              </div>
+              <div className="text-xs text-[var(--pos-muted)] mt-1">
+                {activeCashSession
+                  ? `Opened by ${activeCashSession.openedBy.firstName}`
+                  : "No active session"}
+              </div>
+            </div>
+            <div
+              className="w-11 h-11 rounded-2xl border flex items-center justify-center"
+              style={{ borderColor: "var(--pos-border)", background: activeCashSession ? "rgba(16, 185, 129, 0.1)" : "rgba(255,255,255,0.04)" }}
+            >
+              <CreditCard className="w-5 h-5" style={{ color: activeCashSession ? "#10b981" : "var(--pos-muted)" }} />
             </div>
           </div>
         </PosCard>

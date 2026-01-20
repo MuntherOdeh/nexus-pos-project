@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {
   CheckCircle2,
   RefreshCw,
@@ -12,8 +12,11 @@ import {
   Clock,
   AlertCircle,
   Package,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 type KdsItem = {
   id: string;
@@ -93,6 +96,40 @@ export function KdsView({
   const [lastRefreshTime, setLastRefreshTime] = useState<string>("");
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [isMounted, setIsMounted] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
+  const previousOrderCountRef = useRef(initialOrders.length);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Play notification sound using Web Audio API
+  const playNotificationSound = useCallback(() => {
+    if (!soundEnabled || typeof window === 'undefined') return;
+
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+      // Create a pleasant chime sound
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A5
+      oscillator.frequency.setValueAtTime(1100, audioContext.currentTime + 0.1); // C#6
+      oscillator.frequency.setValueAtTime(1320, audioContext.currentTime + 0.2); // E6
+
+      oscillator.type = 'sine';
+
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+    } catch {
+      // Ignore audio errors
+    }
+  }, [soundEnabled]);
 
   // Set mounted state and initialize time on client only
   useEffect(() => {
@@ -127,14 +164,32 @@ export function KdsView({
       );
       const data = await response.json();
       if (response.ok && data?.success && Array.isArray(data.orders)) {
-        setOrders(data.orders);
+        const newOrders = data.orders as KdsOrder[];
+
+        // Check for new orders and play notification
+        const currentIds = new Set(orders.map(o => o.id));
+        const incomingNewOrderIds = newOrders
+          .filter(o => !currentIds.has(o.id) && o.status === "IN_KITCHEN")
+          .map(o => o.id);
+
+        if (incomingNewOrderIds.length > 0) {
+          playNotificationSound();
+          setNewOrderIds(new Set(incomingNewOrderIds));
+          // Clear the "new" indicator after 5 seconds
+          setTimeout(() => {
+            setNewOrderIds(new Set());
+          }, 5000);
+        }
+
+        setOrders(newOrders);
         setError(null);
         setLastRefreshTime(new Date().toLocaleTimeString());
+        previousOrderCountRef.current = newOrders.length;
       }
     } catch {
       setError("Unable to refresh kitchen screen.");
     }
-  }, [tenant.slug]);
+  }, [tenant.slug, orders, playNotificationSound]);
 
   useEffect(() => {
     let mounted = true;
@@ -224,7 +279,7 @@ export function KdsView({
     </div>
   );
 
-  const OrderCard = ({ order }: { order: KdsOrder }) => {
+  const OrderCard = ({ order, isNew }: { order: KdsOrder; isNew?: boolean }) => {
     const ageColor = isMounted ? getAgeColor(order.sentToKitchenAt || order.openedAt, currentTime) : "text-[var(--pos-muted)]";
     const activeItems = order.items.filter(i => i.status !== "SERVED" && i.status !== "VOID");
     const readyItems = order.items.filter(i => i.status === "READY").length;
@@ -232,7 +287,16 @@ export function KdsView({
     const totalActiveItems = activeItems.length;
 
     return (
-      <div className="rounded-2xl bg-[var(--pos-panel-solid)] border border-[color:var(--pos-border)] overflow-hidden shadow-lg">
+      <motion.div
+        initial={isNew ? { scale: 0.9, opacity: 0 } : false}
+        animate={{ scale: 1, opacity: 1 }}
+        className={cn(
+          "rounded-2xl bg-[var(--pos-panel-solid)] border overflow-hidden shadow-lg transition-all",
+          isNew
+            ? "border-primary-500 ring-2 ring-primary-500/30 animate-pulse"
+            : "border-[color:var(--pos-border)]"
+        )}
+      >
         {/* Order Header */}
         <div className="p-4 border-b border-[color:var(--pos-border)] bg-[var(--pos-bg)]">
           <div className="flex items-center justify-between gap-3">
@@ -353,7 +417,7 @@ export function KdsView({
             );
           })}
         </div>
-      </div>
+      </motion.div>
     );
   };
 
@@ -374,18 +438,31 @@ export function KdsView({
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-sm text-[var(--pos-muted)]">
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 text-sm text-[var(--pos-muted)]">
               <Clock className="w-4 h-4" />
               Last update: {lastRefreshTime || "--:--:--"}
             </div>
             <button
               type="button"
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              title={soundEnabled ? "Disable sound notifications" : "Enable sound notifications"}
+              className={cn(
+                "p-3 rounded-xl border transition-colors",
+                soundEnabled
+                  ? "bg-primary-500/10 border-primary-500/30 text-primary-500"
+                  : "bg-[var(--pos-bg)] border-[color:var(--pos-border)] text-[var(--pos-muted)]"
+              )}
+            >
+              {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+            </button>
+            <button
+              type="button"
               onClick={refresh}
-              className="px-5 py-3 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-2 hover:bg-primary-600 transition-colors shadow-lg"
+              className="px-4 sm:px-5 py-3 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-2 hover:bg-primary-600 transition-colors shadow-lg"
             >
               <RefreshCw className="w-5 h-5" />
-              Refresh
+              <span className="hidden sm:inline">Refresh</span>
             </button>
           </div>
         </div>
@@ -416,65 +493,71 @@ export function KdsView({
             </div>
           </div>
         ) : (
-          <div className="grid lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
             {/* In Kitchen Column */}
             <div className="space-y-4">
-              <div className="flex items-center gap-3 px-2">
+              <div className="flex items-center gap-3 px-2 sticky top-0 bg-[var(--pos-bg)] py-2 z-10">
                 <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
                   <Flame className="w-5 h-5 text-amber-500" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <h2 className="font-bold text-lg">In Kitchen</h2>
                   <p className="text-xs text-[var(--pos-muted)]">{grouped.inKitchen.length} orders</p>
                 </div>
               </div>
-              {grouped.inKitchen.length === 0 ? (
-                <EmptyColumn title="No orders cooking" subtitle="Start preparing incoming orders" icon={Flame} />
-              ) : (
-                grouped.inKitchen.map((order) => (
-                  <OrderCard key={order.id} order={order} />
-                ))
-              )}
+              <AnimatePresence>
+                {grouped.inKitchen.length === 0 ? (
+                  <EmptyColumn title="No orders cooking" subtitle="Start preparing incoming orders" icon={Flame} />
+                ) : (
+                  grouped.inKitchen.map((order) => (
+                    <OrderCard key={order.id} order={order} isNew={newOrderIds.has(order.id)} />
+                  ))
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Ready Column */}
             <div className="space-y-4">
-              <div className="flex items-center gap-3 px-2">
+              <div className="flex items-center gap-3 px-2 sticky top-0 bg-[var(--pos-bg)] py-2 z-10">
                 <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center">
                   <Bell className="w-5 h-5 text-primary-500" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <h2 className="font-bold text-lg">Ready to Serve</h2>
                   <p className="text-xs text-[var(--pos-muted)]">{grouped.ready.length} orders</p>
                 </div>
               </div>
-              {grouped.ready.length === 0 ? (
-                <EmptyColumn title="No orders ready" subtitle="Completed orders appear here" icon={Bell} />
-              ) : (
-                grouped.ready.map((order) => (
-                  <OrderCard key={order.id} order={order} />
-                ))
-              )}
+              <AnimatePresence>
+                {grouped.ready.length === 0 ? (
+                  <EmptyColumn title="No orders ready" subtitle="Completed orders appear here" icon={Bell} />
+                ) : (
+                  grouped.ready.map((order) => (
+                    <OrderCard key={order.id} order={order} />
+                  ))
+                )}
+              </AnimatePresence>
             </div>
 
             {/* For Payment Column */}
             <div className="space-y-4">
-              <div className="flex items-center gap-3 px-2">
+              <div className="flex items-center gap-3 px-2 sticky top-0 bg-[var(--pos-bg)] py-2 z-10">
                 <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
                   <Package className="w-5 h-5 text-blue-500" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <h2 className="font-bold text-lg">Awaiting Payment</h2>
                   <p className="text-xs text-[var(--pos-muted)]">{grouped.forPayment.length} orders</p>
                 </div>
               </div>
-              {grouped.forPayment.length === 0 ? (
-                <EmptyColumn title="No pending bills" subtitle="Served orders move here" icon={Package} />
-              ) : (
-                grouped.forPayment.map((order) => (
-                  <OrderCard key={order.id} order={order} />
-                ))
-              )}
+              <AnimatePresence>
+                {grouped.forPayment.length === 0 ? (
+                  <EmptyColumn title="No pending bills" subtitle="Served orders move here" icon={Package} />
+                ) : (
+                  grouped.forPayment.map((order) => (
+                    <OrderCard key={order.id} order={order} />
+                  ))
+                )}
+              </AnimatePresence>
             </div>
           </div>
         )}

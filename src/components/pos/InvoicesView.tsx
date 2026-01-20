@@ -78,13 +78,16 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export function InvoicesView({ invoices }: { invoices: InvoiceRow[] }) {
+export function InvoicesView({ invoices: initialInvoices, tenantSlug }: { invoices: InvoiceRow[]; tenantSlug: string }) {
+  const [invoices, setInvoices] = useState<InvoiceRow[]>(initialInvoices);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<string>("ALL");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"date" | "amount" | "customer">("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [toast, setToast] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Toast auto-dismiss
   useEffect(() => {
@@ -94,8 +97,75 @@ export function InvoicesView({ invoices }: { invoices: InvoiceRow[] }) {
     }
   }, [toast]);
 
-  const showComingSoon = (feature: string) => {
-    setToast(`${feature} - Coming soon!`);
+  const showMessage = (message: string) => {
+    setToast(message);
+  };
+
+  const updateInvoiceStatus = async (invoiceId: string, newStatus: string) => {
+    setActionLoading(invoiceId);
+    try {
+      const response = await fetch(`/api/pos/tenants/${tenantSlug}/invoices/${invoiceId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setInvoices(prev => prev.map(inv =>
+          inv.id === invoiceId ? { ...inv, status: newStatus } : inv
+        ));
+        showMessage(`Invoice ${newStatus === "SENT" ? "sent" : newStatus === "PAID" ? "marked as paid" : "updated"}`);
+      } else {
+        showMessage(data.error || "Failed to update invoice");
+      }
+    } catch {
+      showMessage("Network error");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const exportInvoices = () => {
+    // Export filtered invoices as CSV
+    const filteredData = invoices.filter((inv) => {
+      const q = query.trim().toLowerCase();
+      const matchesQuery = !q ||
+        inv.number.toLowerCase().includes(q) ||
+        inv.customerName.toLowerCase().includes(q) ||
+        (inv.customerEmail || "").toLowerCase().includes(q);
+      const matchesStatus = status === "ALL" ? true : inv.status === status;
+      return matchesQuery && matchesStatus;
+    });
+
+    const csv = [
+      ["Invoice #", "Customer", "Email", "Status", "Issued", "Due", "Subtotal", "Tax", "Total"],
+      ...filteredData.map(inv => [
+        inv.number,
+        inv.customerName,
+        inv.customerEmail || "",
+        inv.status,
+        formatDate(inv.issuedAt),
+        inv.dueAt ? formatDate(inv.dueAt) : "",
+        (inv.subtotalCents / 100).toFixed(2),
+        (inv.taxCents / 100).toFixed(2),
+        (inv.totalCents / 100).toFixed(2),
+      ])
+    ].map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `invoices-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showMessage("Invoices exported successfully");
+  };
+
+  const handleInvoiceCreated = (newInvoice: InvoiceRow) => {
+    setInvoices(prev => [newInvoice, ...prev]);
+    setShowCreateModal(false);
+    showMessage("Invoice created successfully");
   };
 
   const filtered = useMemo(() => {
@@ -173,13 +243,22 @@ export function InvoicesView({ invoices }: { invoices: InvoiceRow[] }) {
             </div>
           </div>
 
-          <button
-            onClick={() => showComingSoon("New Invoice")}
-            className="px-5 py-3 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-2 hover:bg-primary-600 transition-colors shadow-lg"
-          >
-            <Plus className="w-5 h-5" />
-            New Invoice
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={exportInvoices}
+              className="px-4 py-3 rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-panel-solid)] font-medium flex items-center gap-2 hover:bg-[var(--pos-bg)] transition-colors"
+            >
+              <Download className="w-5 h-5" />
+              Export
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-5 py-3 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-2 hover:bg-primary-600 transition-colors shadow-lg"
+            >
+              <Plus className="w-5 h-5" />
+              New Invoice
+            </button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -260,7 +339,7 @@ export function InvoicesView({ invoices }: { invoices: InvoiceRow[] }) {
                 Create your first invoice to start tracking payments and managing your business finances.
               </p>
               <button
-                onClick={() => showComingSoon("Create Invoice")}
+                onClick={() => setShowCreateModal(true)}
                 className="px-6 py-3 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-2 hover:bg-primary-600 transition-colors"
               >
                 <Plus className="w-5 h-5" />
@@ -415,34 +494,44 @@ export function InvoicesView({ invoices }: { invoices: InvoiceRow[] }) {
               {/* Actions */}
               <div className="grid grid-cols-2 gap-3 pt-4">
                 <button
-                  onClick={() => showComingSoon("Print Invoice")}
+                  onClick={() => window.print()}
                   className="px-4 py-3 rounded-xl border border-[color:var(--pos-border)] font-medium flex items-center justify-center gap-2 hover:bg-[var(--pos-bg)] transition-colors"
                 >
                   <Printer className="w-4 h-4" />
                   Print
                 </button>
                 <button
-                  onClick={() => showComingSoon("Download Invoice")}
+                  onClick={exportInvoices}
                   className="px-4 py-3 rounded-xl border border-[color:var(--pos-border)] font-medium flex items-center justify-center gap-2 hover:bg-[var(--pos-bg)] transition-colors"
                 >
                   <Download className="w-4 h-4" />
-                  Download
+                  Export
                 </button>
                 {selected.status === "DRAFT" && (
                   <button
-                    onClick={() => showComingSoon("Send Invoice")}
-                    className="col-span-2 px-4 py-3 rounded-xl bg-blue-500 text-white font-medium flex items-center justify-center gap-2 hover:bg-blue-600 transition-colors"
+                    onClick={() => updateInvoiceStatus(selected.id, "SENT")}
+                    disabled={actionLoading === selected.id}
+                    className="col-span-2 px-4 py-3 rounded-xl bg-blue-500 text-white font-medium flex items-center justify-center gap-2 hover:bg-blue-600 transition-colors disabled:opacity-50"
                   >
-                    <Send className="w-4 h-4" />
+                    {actionLoading === selected.id ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
                     Send Invoice
                   </button>
                 )}
                 {(selected.status === "SENT" || selected.status === "OVERDUE") && (
                   <button
-                    onClick={() => showComingSoon("Mark as Paid")}
-                    className="col-span-2 px-4 py-3 rounded-xl bg-primary-500 text-white font-medium flex items-center justify-center gap-2 hover:bg-primary-600 transition-colors"
+                    onClick={() => updateInvoiceStatus(selected.id, "PAID")}
+                    disabled={actionLoading === selected.id}
+                    className="col-span-2 px-4 py-3 rounded-xl bg-primary-500 text-white font-medium flex items-center justify-center gap-2 hover:bg-primary-600 transition-colors disabled:opacity-50"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
+                    {actionLoading === selected.id ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4" />
+                    )}
                     Mark as Paid
                   </button>
                 )}
@@ -464,6 +553,252 @@ export function InvoicesView({ invoices }: { invoices: InvoiceRow[] }) {
           </div>
         </div>
       )}
+
+      {/* Create Invoice Modal */}
+      {showCreateModal && (
+        <CreateInvoiceModal
+          tenantSlug={tenantSlug}
+          onClose={() => setShowCreateModal(false)}
+          onCreated={handleInvoiceCreated}
+        />
+      )}
+    </div>
+  );
+}
+
+// Create Invoice Modal Component
+function CreateInvoiceModal({
+  tenantSlug,
+  onClose,
+  onCreated,
+}: {
+  tenantSlug: string;
+  onClose: () => void;
+  onCreated: (invoice: InvoiceRow) => void;
+}) {
+  const [customerName, setCustomerName] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [lines, setLines] = useState([{ description: "", quantity: 1, unitPriceCents: 0 }]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const addLine = () => {
+    setLines([...lines, { description: "", quantity: 1, unitPriceCents: 0 }]);
+  };
+
+  const removeLine = (index: number) => {
+    if (lines.length > 1) {
+      setLines(lines.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateLine = (index: number, field: string, value: string | number) => {
+    const updated = [...lines];
+    updated[index] = { ...updated[index], [field]: value };
+    setLines(updated);
+  };
+
+  const subtotal = lines.reduce((sum, line) => sum + line.unitPriceCents * line.quantity, 0);
+  const tax = Math.round(subtotal * 0.05);
+  const total = subtotal + tax;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customerName.trim()) {
+      setError("Customer name is required");
+      return;
+    }
+    if (lines.some(l => !l.description.trim() || l.unitPriceCents <= 0)) {
+      setError("All line items must have description and price");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/pos/tenants/${tenantSlug}/invoices`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerName: customerName.trim(),
+          customerEmail: customerEmail.trim() || null,
+          lines: lines.map(l => ({
+            description: l.description,
+            quantity: l.quantity,
+            unitPriceCents: l.unitPriceCents,
+          })),
+          taxPercent: 5,
+        }),
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        onCreated({
+          id: data.invoice.id,
+          number: data.invoice.number,
+          status: data.invoice.status,
+          customerName: data.invoice.customerName,
+          customerEmail: data.invoice.customerEmail,
+          issuedAt: data.invoice.issuedAt,
+          dueAt: data.invoice.dueAt,
+          subtotalCents: data.invoice.subtotalCents,
+          taxCents: data.invoice.taxCents,
+          totalCents: data.invoice.totalCents,
+          currency: data.invoice.currency,
+          lines: data.invoice.lines.map((l: { description: string; quantity: number; unitPriceCents: number; lineTotalCents: number }) => ({
+            description: l.description,
+            quantity: l.quantity,
+            unitPriceCents: l.unitPriceCents,
+            lineTotalCents: l.lineTotalCents,
+          })),
+        });
+      } else {
+        setError(data.error || "Failed to create invoice");
+      }
+    } catch {
+      setError("Network error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-[var(--pos-panel-solid)] rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-[color:var(--pos-border)] flex items-center justify-between">
+          <h2 className="text-xl font-bold">Create Invoice</h2>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-[var(--pos-bg)]">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {error && (
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 text-sm">
+              {error}
+            </div>
+          )}
+
+          {/* Customer Info */}
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold mb-2">Customer Name *</label>
+              <input
+                type="text"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Customer name"
+                className="w-full px-4 py-3 rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] focus:border-primary-500 focus:outline-none"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-2">Email</label>
+              <input
+                type="email"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+                placeholder="customer@email.com"
+                className="w-full px-4 py-3 rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] focus:border-primary-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Line Items */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-semibold">Line Items</label>
+              <button
+                type="button"
+                onClick={addLine}
+                className="text-sm text-primary-500 hover:text-primary-400 font-medium flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" />
+                Add Line
+              </button>
+            </div>
+            <div className="space-y-3">
+              {lines.map((line, index) => (
+                <div key={index} className="flex gap-3 items-start">
+                  <input
+                    type="text"
+                    value={line.description}
+                    onChange={(e) => updateLine(index, "description", e.target.value)}
+                    placeholder="Description"
+                    className="flex-1 px-4 py-3 rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] focus:border-primary-500 focus:outline-none"
+                  />
+                  <input
+                    type="number"
+                    value={line.quantity}
+                    onChange={(e) => updateLine(index, "quantity", parseInt(e.target.value) || 1)}
+                    min="1"
+                    placeholder="Qty"
+                    className="w-20 px-4 py-3 rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] focus:border-primary-500 focus:outline-none text-center"
+                  />
+                  <input
+                    type="number"
+                    value={line.unitPriceCents / 100}
+                    onChange={(e) => updateLine(index, "unitPriceCents", Math.round(parseFloat(e.target.value) * 100) || 0)}
+                    min="0"
+                    step="0.01"
+                    placeholder="Price"
+                    className="w-28 px-4 py-3 rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] focus:border-primary-500 focus:outline-none"
+                  />
+                  {lines.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeLine(index)}
+                      className="p-3 rounded-xl hover:bg-red-500/10 text-red-500"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Totals */}
+          <div className="rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)] p-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-[var(--pos-muted)]">Subtotal</span>
+              <span className="font-medium">{(subtotal / 100).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-[var(--pos-muted)]">Tax (5%)</span>
+              <span className="font-medium">{(tax / 100).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-lg font-bold pt-2 border-t border-[color:var(--pos-border)]">
+              <span>Total</span>
+              <span className="text-primary-500">{(total / 100).toFixed(2)}</span>
+            </div>
+          </div>
+
+          {/* Submit */}
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-3 rounded-xl border border-[color:var(--pos-border)] font-medium hover:bg-[var(--pos-bg)] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 px-4 py-3 rounded-xl bg-primary-500 text-white font-semibold hover:bg-primary-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <Plus className="w-5 h-5" />
+                  Create Invoice
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

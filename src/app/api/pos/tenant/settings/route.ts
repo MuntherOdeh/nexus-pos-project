@@ -8,9 +8,16 @@ export const dynamic = "force-dynamic";
 
 const settingsSchema = z.object({
   tenantSlug: z.string(),
-  theme: z.enum(["EMERALD", "MIDNIGHT", "OCEAN", "SUNSET", "NEON", "ROYAL"]).optional(),
+  theme: z.enum(["LIGHT", "DARK", "EMERALD", "MIDNIGHT", "OCEAN", "SUNSET", "NEON", "ROYAL"]).optional(),
   industry: z.enum(["RESTAURANT", "CAFE", "BAKERY", "RETAIL", "OTHER"]).optional(),
 });
+
+// Map new theme names to database enum values
+function mapThemeToDb(theme: string): "EMERALD" | "MIDNIGHT" | "OCEAN" | "SUNSET" | "NEON" | "ROYAL" {
+  if (theme === "LIGHT") return "EMERALD";
+  if (theme === "DARK") return "MIDNIGHT";
+  return theme as "EMERALD" | "MIDNIGHT" | "OCEAN" | "SUNSET" | "NEON" | "ROYAL";
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,7 +46,7 @@ export async function POST(request: NextRequest) {
     const updated = await prisma.tenant.update({
       where: { id: tenant.id },
       data: {
-        ...(theme ? { theme } : {}),
+        ...(theme ? { theme: mapThemeToDb(theme) } : {}),
         ...(industry ? { industry } : {}),
       },
       select: {

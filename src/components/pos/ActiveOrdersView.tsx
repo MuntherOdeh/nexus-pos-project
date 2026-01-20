@@ -18,6 +18,8 @@ import {
   Eye,
   Send,
   Ban,
+  Pause,
+  Play,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/pos/format";
@@ -93,10 +95,14 @@ export function ActiveOrdersView({ tenant, initialOrders, userRole }: ActiveOrde
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [lastRefreshTime, setLastRefreshTime] = useState<string>("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [refreshInterval] = useState(10); // seconds
 
   useEffect(() => {
     setLastRefreshTime(new Date().toLocaleTimeString());
-  }, []);
+    // Auto-refresh on mount to get latest data
+    refresh();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -119,9 +125,10 @@ export function ActiveOrdersView({ tenant, initialOrders, userRole }: ActiveOrde
   }, [tenant.slug]);
 
   useEffect(() => {
-    const interval = setInterval(refresh, 10000);
+    if (!autoRefreshEnabled) return;
+    const interval = setInterval(refresh, refreshInterval * 1000);
     return () => clearInterval(interval);
-  }, [refresh]);
+  }, [refresh, autoRefreshEnabled, refreshInterval]);
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
@@ -211,10 +218,34 @@ export function ActiveOrdersView({ tenant, initialOrders, userRole }: ActiveOrde
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Auto-refresh toggle */}
+            <button
+              type="button"
+              onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
+              className={cn(
+                "px-4 py-3 rounded-xl font-medium flex items-center gap-2 transition-colors border",
+                autoRefreshEnabled
+                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
+                  : "bg-[var(--pos-bg)] border-[var(--pos-border)] text-[var(--pos-muted)]"
+              )}
+            >
+              {autoRefreshEnabled ? (
+                <>
+                  <Pause className="w-4 h-4" />
+                  <span className="hidden sm:inline">Auto ({refreshInterval}s)</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4" />
+                  <span className="hidden sm:inline">Paused</span>
+                </>
+              )}
+            </button>
+
             <div className="flex items-center gap-2 text-sm text-[var(--pos-muted)]">
               <Timer className="w-4 h-4" />
-              Last update: {lastRefreshTime || "--:--:--"}
+              <span className="hidden md:inline">Updated:</span> {lastRefreshTime || "--:--:--"}
             </div>
             <button
               type="button"
@@ -223,7 +254,7 @@ export function ActiveOrdersView({ tenant, initialOrders, userRole }: ActiveOrde
               className="px-5 py-3 rounded-xl bg-primary-500 text-white font-semibold flex items-center gap-2 hover:bg-primary-600 transition-colors shadow-lg disabled:opacity-50"
             >
               <RefreshCw className={cn("w-5 h-5", loading && "animate-spin")} />
-              Refresh
+              <span className="hidden sm:inline">Refresh</span>
             </button>
           </div>
         </div>
@@ -303,7 +334,7 @@ export function ActiveOrdersView({ tenant, initialOrders, userRole }: ActiveOrde
 
       {/* Main Content */}
       <div className="flex-1 overflow-hidden flex">
-        {/* Order List */}
+        {/* Order List - Table View */}
         <div className="flex-1 overflow-auto">
           {filteredOrders.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center p-8 text-center">
@@ -318,79 +349,81 @@ export function ActiveOrdersView({ tenant, initialOrders, userRole }: ActiveOrde
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
-              {filteredOrders.map((order) => {
-                const statusInfo = getStatusInfo(order.status);
-                const StatusIcon = statusInfo.icon;
-                const itemCount = order.items.reduce((sum, i) => sum + i.quantity, 0);
+            <div className="p-4">
+              <div className="rounded-xl border border-[var(--pos-border)] bg-[var(--pos-panel)] overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left text-sm text-[var(--pos-muted)] border-b border-[var(--pos-border)] bg-[var(--pos-bg)]">
+                      <th className="py-3 px-4 font-medium">#</th>
+                      <th className="py-3 px-4 font-medium">Order</th>
+                      <th className="py-3 px-4 font-medium">Table</th>
+                      <th className="py-3 px-4 font-medium">Items</th>
+                      <th className="py-3 px-4 font-medium">Status</th>
+                      <th className="py-3 px-4 font-medium">Time</th>
+                      <th className="py-3 px-4 font-medium text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredOrders.map((order, index) => {
+                      const statusInfo = getStatusInfo(order.status);
+                      const StatusIcon = statusInfo.icon;
+                      const itemCount = order.items.reduce((sum, i) => sum + i.quantity, 0);
 
-                return (
-                  <button
-                    key={order.id}
-                    onClick={() => setSelectedOrder(order)}
-                    className={cn(
-                      "text-left rounded-2xl border p-4 transition-all hover:shadow-lg",
-                      selectedOrder?.id === order.id
-                        ? "border-primary-500 bg-primary-500/5 ring-2 ring-primary-500/20"
-                        : "border-[color:var(--pos-border)] bg-[var(--pos-panel-solid)] hover:border-[var(--pos-accent)]"
-                    )}
-                  >
-                    {/* Header */}
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div>
-                        <div className="font-mono text-sm text-[var(--pos-muted)]">
-                          {order.orderNumber.slice(-10)}
-                        </div>
-                        <div className="font-bold text-lg">
-                          {order.table ? `Table ${order.table.name}` : "Quick Sale"}
-                        </div>
-                      </div>
-                      <span
-                        className={cn(
-                          "px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5",
-                          statusInfo.bg,
-                          statusInfo.border,
-                          statusInfo.color,
-                          "border"
-                        )}
-                      >
-                        <StatusIcon className="w-3.5 h-3.5" />
-                        {statusInfo.label}
-                      </span>
-                    </div>
-
-                    {/* Items Preview */}
-                    <div className="space-y-1 mb-3">
-                      {order.items.slice(0, 3).map((item) => (
-                        <div key={item.id} className="flex items-center justify-between text-sm">
-                          <span className="text-[var(--pos-muted)]">
-                            {item.quantity}x {item.productName}
-                          </span>
-                        </div>
-                      ))}
-                      {order.items.length > 3 && (
-                        <div className="text-xs text-[var(--pos-muted)]">
-                          +{order.items.length - 3} more items
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Footer */}
-                    <div className="flex items-center justify-between pt-3 border-t border-[color:var(--pos-border)]">
-                      <div className="flex items-center gap-3 text-xs text-[var(--pos-muted)]">
-                        <span className="flex items-center gap-1">
-                          <Users className="w-3.5 h-3.5" />
-                          {itemCount} items
-                        </span>
-                        <span>{formatAge(order.openedAt)}</span>
-                      </div>
-                      <div className="font-bold text-lg">
-                        {formatMoney({ cents: order.totalCents, currency: order.currency })}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+                      return (
+                        <tr
+                          key={order.id}
+                          onClick={() => setSelectedOrder(order)}
+                          className={cn(
+                            "border-b border-[var(--pos-border)] last:border-b-0 cursor-pointer transition-colors",
+                            selectedOrder?.id === order.id
+                              ? "bg-primary-500/10"
+                              : "hover:bg-[var(--pos-bg)]"
+                          )}
+                        >
+                          <td className="py-3 px-4 text-[var(--pos-muted)] text-sm">{index + 1}</td>
+                          <td className="py-3 px-4">
+                            <div className="font-mono text-sm">{order.orderNumber.slice(-8)}</div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-medium">
+                              {order.table ? order.table.name : "Quick Sale"}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold">{itemCount}</span>
+                              <span className="text-[var(--pos-muted)] text-sm">
+                                {order.items.slice(0, 2).map(i => i.productName).join(", ")}
+                                {order.items.length > 2 && ` +${order.items.length - 2}`}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold",
+                                statusInfo.bg,
+                                statusInfo.color
+                              )}
+                            >
+                              <StatusIcon className="w-3 h-3" />
+                              {statusInfo.label}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-[var(--pos-muted)]">
+                            {formatAge(order.openedAt)}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <span className="font-bold text-lg">
+                              {formatMoney({ cents: order.totalCents, currency: order.currency })}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

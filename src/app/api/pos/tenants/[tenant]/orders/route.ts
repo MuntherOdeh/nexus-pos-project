@@ -143,10 +143,49 @@ export async function POST(request: NextRequest, context: { params: { tenant: st
         tableId,
         status: { in: OPEN_STATUSES },
       },
-      select: { id: true },
+      select: {
+        id: true,
+        status: true,
+        orderNumber: true,
+        notes: true,
+        subtotalCents: true,
+        discountCents: true,
+        taxCents: true,
+        totalCents: true,
+        currency: true,
+        openedAt: true,
+        sentToKitchenAt: true,
+        closedAt: true,
+        tableId: true,
+        table: { select: { id: true, name: true } },
+        customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, loyaltyPoints: true } },
+        items: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            productId: true,
+            productName: true,
+            unitPriceCents: true,
+            quantity: true,
+            status: true,
+            notes: true,
+            discountPercent: true,
+          },
+        },
+        payments: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            provider: true,
+            status: true,
+            amountCents: true,
+            currency: true,
+          },
+        },
+      },
     });
     if (existing) {
-      return NextResponse.json({ success: true, orderId: existing.id, reused: true }, { status: 200 });
+      return NextResponse.json({ success: true, order: existing, reused: true }, { status: 200 });
     }
   }
 
@@ -175,6 +214,7 @@ export async function POST(request: NextRequest, context: { params: { tenant: st
       closedAt: true,
       tableId: true,
       table: { select: { id: true, name: true } },
+      customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, loyaltyPoints: true } },
       items: {
         orderBy: { createdAt: "asc" },
         select: {
@@ -186,6 +226,16 @@ export async function POST(request: NextRequest, context: { params: { tenant: st
           status: true,
           notes: true,
           discountPercent: true,
+        },
+      },
+      payments: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          provider: true,
+          status: true,
+          amountCents: true,
+          currency: true,
         },
       },
     },

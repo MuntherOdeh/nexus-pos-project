@@ -46,6 +46,9 @@ import {
   X,
   Edit3,
   Save,
+  LayoutGrid,
+  Trash2,
+  Download,
 } from "lucide-react";
 import { POS_THEMES, type PosThemeKey } from "@/lib/pos/theme";
 import { getPublicTenantRootDomain } from "@/lib/tenant-slug";
@@ -63,7 +66,7 @@ type PaymentConnectionRow = {
 // TYPES
 // ============================================================================
 
-type SettingsSection = "general" | "pos" | "payment" | "receipt" | "tax" | "devices";
+type SettingsSection = "general" | "pos" | "tables" | "data" | "payment" | "receipt" | "tax" | "devices";
 
 type POSConfig = {
   allowNegativeStock: boolean;
@@ -396,10 +399,201 @@ export function SettingsView({
     showToast("Default tax updated");
   };
 
+  // Table management state
+  const [tableStats, setTableStats] = useState<{
+    floors: Array<{ id: string; name: string; tableCount: number }>;
+    totalTables: number;
+  } | null>(null);
+  const [loadingTables, setLoadingTables] = useState(false);
+  const [tableAction, setTableAction] = useState<string | null>(null);
+  const [generateConfig, setGenerateConfig] = useState({
+    mainFloorCount: 12,
+    includeTerrace: true,
+    terraceCount: 6,
+  });
+
+  // Fetch table stats when tables section is active
+  React.useEffect(() => {
+    if (activeSection === "tables") {
+      fetchTableStats();
+    }
+  }, [activeSection]);
+
+  const fetchTableStats = async () => {
+    setLoadingTables(true);
+    try {
+      const response = await fetch(`/api/pos/tenants/${tenant.slug}/tables`);
+      const data = await response.json();
+      if (data.success) {
+        setTableStats({ floors: data.floors, totalTables: data.totalTables });
+      }
+    } catch {
+      // Ignore errors
+    } finally {
+      setLoadingTables(false);
+    }
+  };
+
+  const loadSampleTables = async () => {
+    setTableAction("sample");
+    try {
+      const response = await fetch(`/api/pos/tenants/${tenant.slug}/tables/sample`, {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (data.success) {
+        showToast(`Loaded ${data.tablesCreated} sample tables`);
+        await fetchTableStats();
+      } else {
+        showToast(data.error || "Failed to load sample tables");
+      }
+    } catch {
+      showToast("Error loading sample tables");
+    } finally {
+      setTableAction(null);
+    }
+  };
+
+  const generateTables = async () => {
+    setTableAction("generate");
+    try {
+      const response = await fetch(`/api/pos/tenants/${tenant.slug}/tables/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mainFloorCount: generateConfig.mainFloorCount,
+          includeTerrace: generateConfig.includeTerrace,
+          terraceCount: generateConfig.terraceCount,
+          clearExisting: true,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        showToast(`Generated ${data.tablesCreated} tables`);
+        await fetchTableStats();
+      } else {
+        showToast(data.error || "Failed to generate tables");
+      }
+    } catch {
+      showToast("Error generating tables");
+    } finally {
+      setTableAction(null);
+    }
+  };
+
+  const clearAllTables = async () => {
+    if (!confirm("Are you sure you want to delete all tables and floors? This cannot be undone.")) {
+      return;
+    }
+    setTableAction("clear");
+    try {
+      const response = await fetch(`/api/pos/tenants/${tenant.slug}/tables`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+      if (data.success) {
+        showToast("All tables deleted");
+        await fetchTableStats();
+      } else {
+        showToast(data.error || "Failed to delete tables");
+      }
+    } catch {
+      showToast("Error deleting tables");
+    } finally {
+      setTableAction(null);
+    }
+  };
+
+  // Sample data loading state
+  const [dataAction, setDataAction] = useState<string | null>(null);
+
+  const loadSampleProducts = async () => {
+    setDataAction("products");
+    try {
+      const response = await fetch(`/api/pos/tenants/${tenant.slug}/products/sample`, {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (data.success) {
+        showToast(`Loaded ${data.productsCreated || "sample"} products`);
+      } else {
+        showToast(data.error || "Failed to load sample products");
+      }
+    } catch {
+      showToast("Error loading sample products");
+    } finally {
+      setDataAction(null);
+    }
+  };
+
+  const loadSampleOrders = async () => {
+    setDataAction("orders");
+    try {
+      const response = await fetch(`/api/pos/tenants/${tenant.slug}/orders/sample`, {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (data.success) {
+        showToast(`Created ${data.ordersCreated} sample orders`);
+      } else {
+        showToast(data.error || "Failed to load sample orders");
+      }
+    } catch {
+      showToast("Error loading sample orders");
+    } finally {
+      setDataAction(null);
+    }
+  };
+
+  const loadAllSampleData = async () => {
+    setDataAction("all");
+    try {
+      // Load products first
+      const productsRes = await fetch(`/api/pos/tenants/${tenant.slug}/products/sample`, {
+        method: "POST",
+      });
+      const productsData = await productsRes.json();
+
+      // Load tables
+      const tablesRes = await fetch(`/api/pos/tenants/${tenant.slug}/tables/sample`, {
+        method: "POST",
+      });
+      const tablesData = await tablesRes.json();
+
+      // Load orders (needs products)
+      const ordersRes = await fetch(`/api/pos/tenants/${tenant.slug}/orders/sample`, {
+        method: "POST",
+      });
+      const ordersData = await ordersRes.json();
+
+      const messages = [];
+      if (productsData.success) messages.push(`${productsData.productsCreated || "sample"} products`);
+      if (tablesData.success) messages.push(`${tablesData.tablesCreated} tables`);
+      if (ordersData.success) messages.push(`${ordersData.ordersCreated} orders`);
+
+      if (messages.length > 0) {
+        showToast(`Loaded ${messages.join(", ")}`);
+      } else {
+        showToast("Sample data may already exist");
+      }
+
+      // Refresh table stats if on tables section
+      if (activeSection === "tables") {
+        await fetchTableStats();
+      }
+    } catch {
+      showToast("Error loading sample data");
+    } finally {
+      setDataAction(null);
+    }
+  };
+
   // Navigation sections
   const sections = [
     { id: "general" as const, label: "General", icon: Settings },
     { id: "pos" as const, label: "Point of Sale", icon: ShoppingCart },
+    { id: "tables" as const, label: "Tables", icon: LayoutGrid },
+    { id: "data" as const, label: "Sample Data", icon: Database },
     { id: "payment" as const, label: "Payments", icon: CreditCard },
     { id: "receipt" as const, label: "Receipts", icon: Receipt },
     { id: "tax" as const, label: "Taxes", icon: Calculator },
@@ -848,6 +1042,366 @@ export function SettingsView({
                       onChange={(v) => updatePosConfig("enableLoyalty", v)}
                     />
                   </SettingRow>
+                </div>
+              </SectionCard>
+            </>
+          )}
+
+          {/* TABLES SETTINGS */}
+          {activeSection === "tables" && (
+            <>
+              {/* Current Tables Status */}
+              <SectionCard
+                icon={LayoutGrid}
+                title="Table Management"
+                description="Configure your restaurant floor plan"
+                iconColor="text-cyan-500"
+                iconBg="bg-cyan-500/10"
+              >
+                {loadingTables ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="w-8 h-8 border-3 border-[var(--pos-border)] border-t-primary-500 rounded-full animate-spin" />
+                  </div>
+                ) : tableStats ? (
+                  <div className="space-y-4">
+                    {/* Stats */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] p-4 text-center">
+                        <div className="text-3xl font-bold text-primary-500">{tableStats.totalTables}</div>
+                        <div className="text-sm text-[var(--pos-muted)]">Total Tables</div>
+                      </div>
+                      <div className="rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] p-4 text-center">
+                        <div className="text-3xl font-bold text-cyan-500">{tableStats.floors.length}</div>
+                        <div className="text-sm text-[var(--pos-muted)]">Floors</div>
+                      </div>
+                      <div className="rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] p-4 text-center">
+                        <div className="text-3xl font-bold text-amber-500">
+                          {tableStats.floors.find(f => f.name === "Terrace")?.tableCount || 0}
+                        </div>
+                        <div className="text-sm text-[var(--pos-muted)]">Terrace</div>
+                      </div>
+                    </div>
+
+                    {/* Floor Details */}
+                    {tableStats.floors.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium text-[var(--pos-muted)]">Floors</div>
+                        {tableStats.floors.map((floor) => (
+                          <div
+                            key={floor.id}
+                            className="flex items-center justify-between p-3 rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)]"
+                          >
+                            <div className="flex items-center gap-3">
+                              <LayoutGrid className="w-5 h-5 text-[var(--pos-muted)]" />
+                              <span className="font-medium">{floor.name}</span>
+                            </div>
+                            <span className="text-sm text-[var(--pos-muted)]">
+                              {floor.tableCount} table{floor.tableCount !== 1 ? "s" : ""}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Clear Tables Button */}
+                    {tableStats.totalTables > 0 && (
+                      <button
+                        onClick={clearAllTables}
+                        disabled={tableAction === "clear"}
+                        className="w-full p-3 rounded-xl border border-red-500/30 text-red-500 font-medium hover:bg-red-500/10 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {tableAction === "clear" ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                            Deleting...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="w-4 h-4" />
+                            Clear All Tables
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <LayoutGrid className="w-12 h-12 mx-auto text-[var(--pos-muted)] mb-3" />
+                    <p className="text-[var(--pos-muted)]">No tables configured yet</p>
+                  </div>
+                )}
+              </SectionCard>
+
+              {/* Generate Tables */}
+              <SectionCard
+                icon={Plus}
+                title="Generate Tables"
+                description="Create tables for your floor plan"
+                iconColor="text-emerald-500"
+                iconBg="bg-emerald-500/10"
+              >
+                <div className="space-y-4">
+                  {/* Main Floor */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Main Floor Tables</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
+                      value={generateConfig.mainFloorCount}
+                      onChange={(e) =>
+                        setGenerateConfig({ ...generateConfig, mainFloorCount: parseInt(e.target.value) || 0 })
+                      }
+                      className="w-full px-4 py-3 rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+
+                  {/* Terrace Toggle */}
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--pos-bg)] border border-[color:var(--pos-border)]">
+                    <div>
+                      <div className="font-medium">Include Terrace</div>
+                      <div className="text-sm text-[var(--pos-muted)]">Add an outdoor seating area</div>
+                    </div>
+                    <Toggle
+                      enabled={generateConfig.includeTerrace}
+                      onChange={(v) => setGenerateConfig({ ...generateConfig, includeTerrace: v })}
+                    />
+                  </div>
+
+                  {/* Terrace Tables */}
+                  {generateConfig.includeTerrace && (
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Terrace Tables</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="30"
+                        value={generateConfig.terraceCount}
+                        onChange={(e) =>
+                          setGenerateConfig({ ...generateConfig, terraceCount: parseInt(e.target.value) || 0 })
+                        }
+                        className="w-full px-4 py-3 rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                  )}
+
+                  {/* Preview */}
+                  <div className="p-4 rounded-xl bg-primary-500/5 border border-primary-500/20">
+                    <div className="flex items-center gap-2 text-primary-500 text-sm font-medium mb-2">
+                      <Info className="w-4 h-4" />
+                      Preview
+                    </div>
+                    <div className="text-sm text-[var(--pos-muted)]">
+                      This will create{" "}
+                      <span className="font-medium text-[var(--pos-text)]">
+                        {generateConfig.mainFloorCount + (generateConfig.includeTerrace ? generateConfig.terraceCount : 0)}
+                      </span>{" "}
+                      tables across{" "}
+                      <span className="font-medium text-[var(--pos-text)]">
+                        {generateConfig.includeTerrace ? "2 floors" : "1 floor"}
+                      </span>
+                      .
+                    </div>
+                  </div>
+
+                  {/* Generate Button */}
+                  <button
+                    onClick={generateTables}
+                    disabled={tableAction === "generate" || (generateConfig.mainFloorCount === 0 && generateConfig.terraceCount === 0)}
+                    className="w-full px-6 py-3 rounded-xl bg-primary-500 text-white font-semibold hover:bg-primary-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {tableAction === "generate" ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-5 h-5" />
+                        Generate Tables
+                      </>
+                    )}
+                  </button>
+                </div>
+              </SectionCard>
+
+              {/* Load Sample Tables */}
+              {(!tableStats || tableStats.totalTables === 0) && (
+                <SectionCard
+                  icon={Download}
+                  title="Quick Setup"
+                  description="Load sample tables for your industry"
+                  iconColor="text-purple-500"
+                  iconBg="bg-purple-500/10"
+                >
+                  <div className="text-center py-4">
+                    <p className="text-[var(--pos-muted)] mb-4">
+                      Load a pre-configured floor plan optimized for your business type.
+                    </p>
+                    <button
+                      onClick={loadSampleTables}
+                      disabled={tableAction === "sample"}
+                      className="px-6 py-3 rounded-xl border border-[color:var(--pos-border)] font-semibold hover:bg-[var(--pos-bg)] transition-colors flex items-center justify-center gap-2 mx-auto disabled:opacity-50"
+                    >
+                      {tableAction === "sample" ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-5 h-5" />
+                          Load Sample Tables
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </SectionCard>
+              )}
+            </>
+          )}
+
+          {/* SAMPLE DATA SETTINGS */}
+          {activeSection === "data" && (
+            <>
+              {/* Quick Load All */}
+              <SectionCard
+                icon={Zap}
+                title="Quick Setup"
+                description="Load all sample data with one click"
+                iconColor="text-amber-500"
+                iconBg="bg-amber-500/10"
+              >
+                <div className="text-center py-6">
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <Zap className="w-10 h-10 text-white" />
+                  </div>
+                  <h3 className="text-lg font-bold mb-2">Load Demo Data</h3>
+                  <p className="text-sm text-[var(--pos-muted)] max-w-md mx-auto mb-6">
+                    Instantly populate your POS with sample products, tables, and orders to explore all features.
+                  </p>
+                  <button
+                    onClick={loadAllSampleData}
+                    disabled={dataAction === "all"}
+                    className="px-8 py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-3 mx-auto disabled:opacity-50 shadow-lg"
+                  >
+                    {dataAction === "all" ? (
+                      <>
+                        <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                        Loading Everything...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-6 h-6" />
+                        Load All Sample Data
+                      </>
+                    )}
+                  </button>
+                </div>
+              </SectionCard>
+
+              {/* Individual Sample Data */}
+              <SectionCard
+                icon={Database}
+                title="Individual Data"
+                description="Load specific types of sample data"
+                iconColor="text-purple-500"
+                iconBg="bg-purple-500/10"
+              >
+                <div className="grid md:grid-cols-3 gap-4">
+                  {/* Products */}
+                  <div className="rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] p-5">
+                    <div className="w-12 h-12 rounded-xl bg-pink-500/10 flex items-center justify-center mb-4">
+                      <Package className="w-6 h-6 text-pink-500" />
+                    </div>
+                    <h4 className="font-bold mb-1">Products</h4>
+                    <p className="text-sm text-[var(--pos-muted)] mb-4">
+                      Load sample menu items and products for your industry
+                    </p>
+                    <button
+                      onClick={loadSampleProducts}
+                      disabled={dataAction === "products"}
+                      className="w-full px-4 py-2.5 rounded-xl border border-[color:var(--pos-border)] font-medium hover:bg-[var(--pos-border)] transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {dataAction === "products" ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4" />
+                          Load Products
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Tables */}
+                  <div className="rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] p-5">
+                    <div className="w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center mb-4">
+                      <LayoutGrid className="w-6 h-6 text-cyan-500" />
+                    </div>
+                    <h4 className="font-bold mb-1">Tables</h4>
+                    <p className="text-sm text-[var(--pos-muted)] mb-4">
+                      Load a pre-configured floor plan with tables
+                    </p>
+                    <button
+                      onClick={loadSampleTables}
+                      disabled={tableAction === "sample"}
+                      className="w-full px-4 py-2.5 rounded-xl border border-[color:var(--pos-border)] font-medium hover:bg-[var(--pos-border)] transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {tableAction === "sample" ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4" />
+                          Load Tables
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Orders */}
+                  <div className="rounded-xl border border-[color:var(--pos-border)] bg-[var(--pos-bg)] p-5">
+                    <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-4">
+                      <ShoppingCart className="w-6 h-6 text-emerald-500" />
+                    </div>
+                    <h4 className="font-bold mb-1">Orders</h4>
+                    <p className="text-sm text-[var(--pos-muted)] mb-4">
+                      Create sample orders in various states
+                    </p>
+                    <button
+                      onClick={loadSampleOrders}
+                      disabled={dataAction === "orders"}
+                      className="w-full px-4 py-2.5 rounded-xl border border-[color:var(--pos-border)] font-medium hover:bg-[var(--pos-border)] transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {dataAction === "orders" ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4" />
+                          Load Orders
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-6 p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
+                  <div className="flex items-start gap-3">
+                    <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-[var(--pos-muted)]">
+                      <span className="font-medium text-[var(--pos-text)]">Note:</span> Sample orders require products to exist first.
+                      Use &quot;Load All Sample Data&quot; for the best experience, or load products before orders.
+                    </div>
+                  </div>
                 </div>
               </SectionCard>
             </>
