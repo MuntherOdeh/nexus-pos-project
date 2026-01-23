@@ -30,7 +30,7 @@ export default async function TenantLogisticsPage({ params }: { params: { tenant
         reference: m.reference,
         warehouseName: m.warehouse.name,
         notes: m.notes,
-        createdAt: m.createdAt.toISOString(),
+        createdAt: m.createdAt?.toISOString() ?? new Date().toISOString(),
         lines: m.lines.map((l) => ({
           productName: l.product.name,
           sku: l.product.sku,

@@ -41,7 +41,7 @@ export default async function TenantKdsPage({ params }: { params: { tenant: stri
         id: o.id,
         status: o.status,
         orderNumber: o.orderNumber,
-        openedAt: o.openedAt.toISOString(),
+        openedAt: o.openedAt?.toISOString() ?? new Date().toISOString(),
         sentToKitchenAt: o.sentToKitchenAt?.toISOString() ?? null,
         table: o.table,
         items: o.items.map((i) => ({
@@ -50,7 +50,7 @@ export default async function TenantKdsPage({ params }: { params: { tenant: stri
           quantity: i.quantity,
           status: i.status,
           notes: i.notes,
-          createdAt: i.createdAt.toISOString(),
+          createdAt: i.createdAt?.toISOString() ?? new Date().toISOString(),
         })),
       }))}
     />

@@ -32,7 +32,7 @@ export default async function TenantInvoicesPage({ params }: { params: { tenant:
         status: inv.status,
         customerName: inv.customerName,
         customerEmail: inv.customerEmail,
-        issuedAt: inv.issuedAt.toISOString(),
+        issuedAt: inv.issuedAt?.toISOString() ?? new Date().toISOString(),
         dueAt: inv.dueAt?.toISOString() ?? null,
         subtotalCents: inv.subtotalCents,
         taxCents: inv.taxCents,

@@ -71,7 +71,7 @@ export default async function TenantOrdersPage({ params }: { params: { tenant: s
       }}
       initialOrders={orders.map((o) => ({
         ...o,
-        openedAt: o.openedAt.toISOString(),
+        openedAt: o.openedAt?.toISOString() ?? new Date().toISOString(),
         sentToKitchenAt: o.sentToKitchenAt?.toISOString() || null,
         closedAt: o.closedAt?.toISOString() || null,
       }))}
