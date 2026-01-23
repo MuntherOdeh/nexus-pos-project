@@ -176,6 +176,9 @@ export async function POST(request: NextRequest, context: { params: { tenant: st
   const sampleData = SAMPLE_PRODUCTS[industry] || SAMPLE_PRODUCTS.RESTAURANT;
 
   try {
+    let productsCreated = 0;
+    let categoriesCreated = 0;
+
     // Create categories and products in a transaction
     await prisma.$transaction(async (tx) => {
       // Create categories
@@ -197,6 +200,7 @@ export async function POST(request: NextRequest, context: { params: { tenant: st
             },
           });
           categoryMap[cat.name] = newCat.id;
+          categoriesCreated++;
         }
       }
 
@@ -217,6 +221,7 @@ export async function POST(request: NextRequest, context: { params: { tenant: st
               isActive: true,
             },
           });
+          productsCreated++;
         }
       }
     });
@@ -235,7 +240,9 @@ export async function POST(request: NextRequest, context: { params: { tenant: st
 
     return NextResponse.json({
       success: true,
-      message: `Loaded ${sampleData.products.length} sample products`,
+      message: productsCreated > 0 ? `Created ${productsCreated} products` : "Products already exist",
+      productsCreated,
+      categoriesCreated,
       productsCount: products.length,
       categoriesCount: categories.length,
     });

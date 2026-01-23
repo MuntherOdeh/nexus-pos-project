@@ -21,16 +21,19 @@ export async function POST(
     );
   }
 
-  // Check if tables already exist
+  // Check if tables already exist - if so, just return success (skip creation)
   const existingTables = await prisma.posTable.count({
     where: { tenantId: auth.ctx.tenantId },
   });
 
   if (existingTables > 0) {
-    return NextResponse.json(
-      { success: false, error: "Tables already exist. Clear them first or use the generate endpoint." },
-      { status: 400 }
-    );
+    return NextResponse.json({
+      success: true,
+      message: "Tables already exist",
+      floorsCreated: 0,
+      tablesCreated: 0,
+      skipped: true,
+    });
   }
 
   // Get tenant industry

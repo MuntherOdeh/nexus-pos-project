@@ -68,9 +68,9 @@ export class PosErrorBoundary extends Component<Props, State> {
               An unexpected error occurred. Please try again or contact support if the problem persists.
             </p>
 
-            {/* Error details (collapsible in dev) */}
-            {process.env.NODE_ENV === 'development' && this.state.error && (
-              <details className="mb-6 text-left">
+            {/* Error details (show in both dev and production for debugging) */}
+            {this.state.error && (
+              <details className="mb-6 text-left" open>
                 <summary className="cursor-pointer text-sm text-[var(--pos-muted)] hover:text-[var(--pos-text)] flex items-center gap-2">
                   <Bug className="w-4 h-4" />
                   Error Details

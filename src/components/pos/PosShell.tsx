@@ -94,14 +94,18 @@ export function PosShell({
 
   // Apply saved theme from localStorage on mount to prevent flash
   useEffect(() => {
-    const savedTheme = localStorage.getItem(`pos-theme-${tenant.slug}`);
-    if (savedTheme && (savedTheme === "LIGHT" || savedTheme === "DARK")) {
-      setTheme(savedTheme as PosThemeKey);
-      // Update the wrapper class immediately
-      const wrapper = document.querySelector('[data-pos-theme-wrapper]');
-      if (wrapper) {
-        wrapper.className = `pos-theme ${POS_THEMES[savedTheme as PosThemeKey].className}`;
+    try {
+      const savedTheme = localStorage.getItem(`pos-theme-${tenant.slug}`);
+      if (savedTheme && (savedTheme === "LIGHT" || savedTheme === "DARK")) {
+        setTheme(savedTheme as PosThemeKey);
+        // Update the wrapper class immediately
+        const wrapper = document.querySelector('[data-pos-theme-wrapper]');
+        if (wrapper) {
+          wrapper.className = `pos-theme ${POS_THEMES[savedTheme as PosThemeKey].className}`;
+        }
       }
+    } catch {
+      // localStorage may not be available
     }
   }, [tenant.slug]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -205,7 +209,11 @@ export function PosShell({
   const updateTheme = (next: PosThemeKey) => {
     setTheme(next);
     // Save to localStorage for instant persistence on refresh
-    localStorage.setItem(`pos-theme-${tenant.slug}`, next);
+    try {
+      localStorage.setItem(`pos-theme-${tenant.slug}`, next);
+    } catch {
+      // localStorage may not be available
+    }
     // Update the parent wrapper's class for immediate visual change
     const wrapper = document.querySelector('[data-pos-theme-wrapper]');
     if (wrapper) {
