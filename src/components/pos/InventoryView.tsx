@@ -6,24 +6,23 @@ import {
   Search,
   Package,
   Plus,
-  Tag,
   Warehouse,
   AlertTriangle,
   CheckCircle2,
   Edit3,
-  Trash2,
-  Filter,
   ArrowUpDown,
   Eye,
   BarChart3,
   TrendingDown,
-  TrendingUp,
   Box,
   Layers,
   X,
   Info,
-  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
+
+const PAGE_SIZE = 20;
 import { formatMoney } from "@/lib/pos/format";
 import { cn } from "@/lib/utils";
 import { AddProductDialog } from "./AddProductDialog";
@@ -67,6 +66,7 @@ export function InventoryView({ products: initialProducts, tenantSlug, currency 
   const [sortBy, setSortBy] = useState<"name" | "stock" | "price">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [toast, setToast] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Toast auto-dismiss
   useEffect(() => {
@@ -96,6 +96,11 @@ export function InventoryView({ products: initialProducts, tenantSlug, currency 
     setIsEditDialogOpen(true);
   };
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query, filter, sortBy, sortDir]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     let result = products.filter((p) => {
@@ -120,6 +125,12 @@ export function InventoryView({ products: initialProducts, tenantSlug, currency 
 
     return result;
   }, [products, query, filter, sortBy, sortDir]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, currentPage]);
 
   const selected = useMemo(
     () => filtered.find((p) => p.id === selectedId) || null,
@@ -293,7 +304,7 @@ export function InventoryView({ products: initialProducts, tenantSlug, currency 
               </div>
 
               {/* Product Rows */}
-              {filtered.map((product) => {
+              {paginatedProducts.map((product) => {
                 const status = getStockStatus(product);
                 const StatusIcon = status.icon;
 
@@ -336,6 +347,34 @@ export function InventoryView({ products: initialProducts, tenantSlug, currency 
                   </button>
                 );
               })}
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="sticky bottom-0 px-4 py-3 bg-[var(--pos-panel-solid)] border-t border-[color:var(--pos-border)] flex items-center justify-between">
+                  <span className="text-sm text-[var(--pos-muted)]">
+                    Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="p-2 rounded-lg border border-[color:var(--pos-border)] hover:bg-[var(--pos-bg)] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="text-sm font-medium px-3">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="p-2 rounded-lg border border-[color:var(--pos-border)] hover:bg-[var(--pos-bg)] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

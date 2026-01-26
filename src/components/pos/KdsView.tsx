@@ -283,7 +283,7 @@ export function KdsView({
     </div>
   );
 
-  const OrderCard = ({ order, isNew }: { order: KdsOrder; isNew?: boolean }) => {
+  const OrderCard = React.memo(function OrderCard({ order, isNew }: { order: KdsOrder; isNew?: boolean }) {
     const ageColor = isMounted ? getAgeColor(order.sentToKitchenAt || order.openedAt, currentTime) : "text-[var(--pos-muted)]";
     const activeItems = order.items.filter(i => i.status !== "SERVED" && i.status !== "VOID");
     const readyItems = order.items.filter(i => i.status === "READY").length;
@@ -423,7 +423,7 @@ export function KdsView({
         </div>
       </motion.div>
     );
-  };
+  });
 
   return (
     <div className="h-[calc(100vh-80px)] flex flex-col overflow-hidden">

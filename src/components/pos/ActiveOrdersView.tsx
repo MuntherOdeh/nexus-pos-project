@@ -67,7 +67,15 @@ function formatAge(iso: string): string {
   return rem ? `${hours}h ${rem}m ago` : `${hours}h ago`;
 }
 
-function getStatusInfo(status: string) {
+type StatusInfo = {
+  label: string;
+  color: string;
+  bg: string;
+  border: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+function getStatusInfo(status: string): StatusInfo {
   switch (status) {
     case "OPEN":
       return { label: "Open", color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/30", icon: Clock };
@@ -85,6 +93,71 @@ function getStatusInfo(status: string) {
       return { label: status, color: "text-gray-500", bg: "bg-gray-500/10", border: "border-gray-500/30", icon: AlertCircle };
   }
 }
+
+const OrderRow = React.memo(function OrderRow({
+  order,
+  index,
+  isSelected,
+  onSelect,
+}: {
+  order: Order;
+  index: number;
+  isSelected: boolean;
+  onSelect: (order: Order) => void;
+}) {
+  const statusInfo = getStatusInfo(order.status);
+  const StatusIcon = statusInfo.icon;
+  const itemCount = order.items.reduce((sum, i) => sum + i.quantity, 0);
+
+  return (
+    <tr
+      onClick={() => onSelect(order)}
+      className={cn(
+        "border-b border-[var(--pos-border)] last:border-b-0 cursor-pointer transition-colors",
+        isSelected ? "bg-primary-500/10" : "hover:bg-[var(--pos-bg)]"
+      )}
+    >
+      <td className="py-3 px-4 text-[var(--pos-muted)] text-sm">{index + 1}</td>
+      <td className="py-3 px-4">
+        <div className="font-mono text-sm">{order.orderNumber.slice(-8)}</div>
+      </td>
+      <td className="py-3 px-4">
+        <div className="font-medium">
+          {order.table ? order.table.name : "Quick Sale"}
+        </div>
+      </td>
+      <td className="py-3 px-4">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold">{itemCount}</span>
+          <span className="text-[var(--pos-muted)] text-sm">
+            {order.items.slice(0, 2).map(i => i.productName).join(", ")}
+            {order.items.length > 2 && ` +${order.items.length - 2}`}
+          </span>
+        </div>
+      </td>
+      <td className="py-3 px-4">
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold",
+            statusInfo.bg,
+            statusInfo.color
+          )}
+        >
+          <StatusIcon className="w-3 h-3" />
+          {statusInfo.label}
+        </span>
+      </td>
+      <td className="py-3 px-4 text-sm text-[var(--pos-muted)]">
+        {formatAge(order.openedAt)}
+      </td>
+      <td className="py-3 px-4 text-right">
+        <span className="font-bold text-lg">
+          {formatMoney({ cents: order.totalCents, currency: order.currency })}
+        </span>
+      </td>
+    </tr>
+  );
+});
 
 export function ActiveOrdersView({ tenant, initialOrders, userRole }: ActiveOrdersViewProps) {
   const [orders, setOrders] = useState<Order[]>(initialOrders);
@@ -370,63 +443,15 @@ export function ActiveOrdersView({ tenant, initialOrders, userRole }: ActiveOrde
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredOrders.map((order, index) => {
-                      const statusInfo = getStatusInfo(order.status);
-                      const StatusIcon = statusInfo.icon;
-                      const itemCount = order.items.reduce((sum, i) => sum + i.quantity, 0);
-
-                      return (
-                        <tr
-                          key={order.id}
-                          onClick={() => setSelectedOrder(order)}
-                          className={cn(
-                            "border-b border-[var(--pos-border)] last:border-b-0 cursor-pointer transition-colors",
-                            selectedOrder?.id === order.id
-                              ? "bg-primary-500/10"
-                              : "hover:bg-[var(--pos-bg)]"
-                          )}
-                        >
-                          <td className="py-3 px-4 text-[var(--pos-muted)] text-sm">{index + 1}</td>
-                          <td className="py-3 px-4">
-                            <div className="font-mono text-sm">{order.orderNumber.slice(-8)}</div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="font-medium">
-                              {order.table ? order.table.name : "Quick Sale"}
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold">{itemCount}</span>
-                              <span className="text-[var(--pos-muted)] text-sm">
-                                {order.items.slice(0, 2).map(i => i.productName).join(", ")}
-                                {order.items.length > 2 && ` +${order.items.length - 2}`}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span
-                              className={cn(
-                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold",
-                                statusInfo.bg,
-                                statusInfo.color
-                              )}
-                            >
-                              <StatusIcon className="w-3 h-3" />
-                              {statusInfo.label}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-sm text-[var(--pos-muted)]">
-                            {formatAge(order.openedAt)}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <span className="font-bold text-lg">
-                              {formatMoney({ cents: order.totalCents, currency: order.currency })}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {filteredOrders.map((order, index) => (
+                      <OrderRow
+                        key={order.id}
+                        order={order}
+                        index={index}
+                        isSelected={selectedOrder?.id === order.id}
+                        onSelect={setSelectedOrder}
+                      />
+                    ))}
                   </tbody>
                 </table>
               </div>
