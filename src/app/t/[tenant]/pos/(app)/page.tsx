@@ -41,9 +41,25 @@ function getOrderStatusColor(status: string): string {
   return colorMap[status] || "bg-gray-500/10 text-gray-500";
 }
 
+// Helper to check if error is a Next.js navigation error
+function isNextNavigationError(error: unknown): boolean {
+  if (error instanceof Error) {
+    const digest = (error as Error & { digest?: string }).digest;
+    return digest?.startsWith("NEXT_REDIRECT") || digest?.startsWith("NEXT_NOT_FOUND") || false;
+  }
+  return false;
+}
+
 export default async function TenantDashboardPage({ params }: { params: { tenant: string } }) {
-  const tenant = await getTenantBySlug({ prisma, slug: params.tenant });
-  if (!tenant) notFound();
+  try {
+    console.log("[Dashboard] Starting for tenant:", params.tenant);
+
+    const tenant = await getTenantBySlug({ prisma, slug: params.tenant });
+    if (!tenant) {
+      console.log("[Dashboard] Tenant not found");
+      notFound();
+    }
+    console.log("[Dashboard] Tenant found:", tenant.slug);
 
   const host = headers().get("host") || "";
   const hostname = host.split(":")[0].toLowerCase();
@@ -379,4 +395,13 @@ export default async function TenantDashboardPage({ params }: { params: { tenant
       </div>
     </div>
   );
+  } catch (error) {
+    if (isNextNavigationError(error)) {
+      throw error;
+    }
+    console.error("[Dashboard] ERROR:", error);
+    console.error("[Dashboard] Error message:", (error as Error)?.message);
+    console.error("[Dashboard] Error stack:", (error as Error)?.stack);
+    throw error;
+  }
 }
