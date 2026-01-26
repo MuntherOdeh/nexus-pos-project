@@ -146,10 +146,14 @@ export function KdsView({
   }, []);
 
   const grouped = useMemo(() => {
-    const inKitchen = orders.filter((o) => o.status === "IN_KITCHEN");
-    const ready = orders.filter((o) => o.status === "READY");
-    const forPayment = orders.filter((o) => o.status === "FOR_PAYMENT");
-    return { inKitchen, ready, forPayment };
+    // Single pass instead of 3 filter operations
+    const result = { inKitchen: [] as KdsOrder[], ready: [] as KdsOrder[], forPayment: [] as KdsOrder[] };
+    for (const o of orders) {
+      if (o.status === "IN_KITCHEN") result.inKitchen.push(o);
+      else if (o.status === "READY") result.ready.push(o);
+      else if (o.status === "FOR_PAYMENT") result.forPayment.push(o);
+    }
+    return result;
   }, [orders]);
 
   const totalItems = useMemo(() => {

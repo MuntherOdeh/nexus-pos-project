@@ -386,6 +386,8 @@ model PosOrder {
   @@index([status])
   @@index([tableId])
   @@index([openedAt])
+  @@index([tenantId, status, closedAt])  // Dashboard revenue queries
+  @@index([tenantId, status, openedAt])  // Orders list queries
 }
 
 enum PosOrderStatus {
@@ -417,6 +419,7 @@ model PosOrderItem {
   @@index([orderId])
   @@index([productId])
   @@index([status])
+  @@index([orderId, status])  // KDS filtering by order and status
 }
 
 enum PosOrderItemStatus {
@@ -545,6 +548,7 @@ model StockItem {
   @@unique([warehouseId, productId])
   @@index([tenantId])
   @@index([productId])
+  @@index([tenantId, reorderPoint])  // Low stock alerts query
 }
 
 model Invoice {

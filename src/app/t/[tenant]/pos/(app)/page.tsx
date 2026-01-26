@@ -52,14 +52,10 @@ function isNextNavigationError(error: unknown): boolean {
 
 export default async function TenantDashboardPage({ params }: { params: { tenant: string } }) {
   try {
-    console.log("[Dashboard] Starting for tenant:", params.tenant);
-
     const tenant = await getTenantBySlug({ prisma, slug: params.tenant });
     if (!tenant) {
-      console.log("[Dashboard] Tenant not found");
       notFound();
     }
-    console.log("[Dashboard] Tenant found:", tenant.slug);
 
   const host = headers().get("host") || "";
   const hostname = host.split(":")[0].toLowerCase();
@@ -399,9 +395,6 @@ export default async function TenantDashboardPage({ params }: { params: { tenant
     if (isNextNavigationError(error)) {
       throw error;
     }
-    console.error("[Dashboard] ERROR:", error);
-    console.error("[Dashboard] Error message:", (error as Error)?.message);
-    console.error("[Dashboard] Error stack:", (error as Error)?.stack);
     throw error;
   }
 }

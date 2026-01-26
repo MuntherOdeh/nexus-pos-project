@@ -145,11 +145,17 @@ export function ActiveOrdersView({ tenant, initialOrders, userRole }: ActiveOrde
   }, [orders, searchQuery, statusFilter]);
 
   const stats = useMemo(() => {
-    const open = orders.filter((o) => o.status === "OPEN").length;
-    const inKitchen = orders.filter((o) => o.status === "IN_KITCHEN").length;
-    const ready = orders.filter((o) => o.status === "READY").length;
-    const forPayment = orders.filter((o) => o.status === "FOR_PAYMENT").length;
-    const totalValue = orders.reduce((sum, o) => sum + o.totalCents, 0);
+    // Single pass instead of 5 iterations
+    let open = 0, inKitchen = 0, ready = 0, forPayment = 0, totalValue = 0;
+    for (const o of orders) {
+      totalValue += o.totalCents;
+      switch (o.status) {
+        case "OPEN": open++; break;
+        case "IN_KITCHEN": inKitchen++; break;
+        case "READY": ready++; break;
+        case "FOR_PAYMENT": forPayment++; break;
+      }
+    }
     return { open, inKitchen, ready, forPayment, total: orders.length, totalValue };
   }, [orders]);
 

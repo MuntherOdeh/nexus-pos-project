@@ -70,3 +70,4 @@ nul
 # Local example project (contains its own node_modules/.git)
 nexuspoint_project_example/
 .env*.local
+.env.production
