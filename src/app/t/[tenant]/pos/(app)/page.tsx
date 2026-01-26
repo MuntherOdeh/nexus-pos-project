@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
-import { Boxes, CreditCard, Receipt, TrendingUp, ShoppingCart, Clock, ChefHat, Banknote } from "lucide-react";
+import { Boxes, CreditCard, TrendingUp, ShoppingCart, Banknote } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getTenantBySlug } from "@/lib/tenants";
 import { formatCompactNumber, formatMoney } from "@/lib/pos/format";
-import { formatDate } from "@/lib/utils";
 import { PosCard, PosCardContent, PosCardHeader } from "@/components/pos/PosCard";
-import { StatusBadge } from "@/components/pos/StatusBadge";
 
 function startOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -58,7 +56,6 @@ export default async function TenantDashboardPage({ params }: { params: { tenant
 
   const checkoutHref = isSubdomainMode ? "/checkout" : `/t/${tenant.slug}/pos/checkout`;
   const ordersHref = isSubdomainMode ? "/orders" : `/t/${tenant.slug}/pos/orders`;
-  const settingsHref = isSubdomainMode ? "/settings" : `/t/${tenant.slug}/pos/settings`;
 
   const now = new Date();
   const sevenDaysAgo = addDays(startOfDay(now), -6);
@@ -239,7 +236,7 @@ export default async function TenantDashboardPage({ params }: { params: { tenant
               </div>
               <div className="text-xs text-[var(--pos-muted)] mt-1">
                 {activeCashSession
-                  ? `Opened by ${activeCashSession.openedBy.firstName}`
+                  ? `Opened by ${activeCashSession.openedBy?.firstName ?? "Unknown"}`
                   : "No active session"}
               </div>
             </div>
