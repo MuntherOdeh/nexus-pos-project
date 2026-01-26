@@ -185,7 +185,7 @@ export default function CustomersPage() {
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
-                        {customer.firstName[0]}{customer.lastName[0]}
+                        {customer.firstName?.[0] ?? ""}{customer.lastName?.[0] ?? ""}
                       </div>
                       <div>
                         <div className="font-semibold">
@@ -229,7 +229,7 @@ export default function CustomersPage() {
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex flex-wrap gap-1">
-                      {customer.tags.slice(0, 2).map((tag) => (
+                      {customer.tags?.slice(0, 2).map((tag) => (
                         <span
                           key={tag}
                           className="px-2 py-0.5 rounded-full text-xs bg-[var(--pos-accent)]/20 text-[var(--pos-accent)]"
@@ -237,7 +237,7 @@ export default function CustomersPage() {
                           {tag}
                         </span>
                       ))}
-                      {customer.tags.length > 2 && (
+                      {(customer.tags?.length ?? 0) > 2 && (
                         <span className="text-xs text-[var(--pos-muted)]">+{customer.tags.length - 2}</span>
                       )}
                     </div>
@@ -287,8 +287,8 @@ export default function CustomersPage() {
             <div className="p-6 border-b border-[var(--pos-border)] flex items-start justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center text-2xl font-bold text-white">
-                  {selectedCustomer.firstName[0]}
-                  {selectedCustomer.lastName[0]}
+                  {selectedCustomer.firstName?.[0] ?? ""}
+                  {selectedCustomer.lastName?.[0] ?? ""}
                 </div>
                 <div>
                   <h2 className="text-xl font-bold">
@@ -359,11 +359,11 @@ export default function CustomersPage() {
               </div>
 
               {/* Tags */}
-              {selectedCustomer.tags.length > 0 && (
+              {(selectedCustomer.tags?.length ?? 0) > 0 && (
                 <div>
                   <div className="text-sm font-semibold mb-2">Tags</div>
                   <div className="flex flex-wrap gap-2">
-                    {selectedCustomer.tags.map((tag) => (
+                    {selectedCustomer.tags?.map((tag) => (
                       <span
                         key={tag}
                         className="px-3 py-1 rounded-full text-sm bg-[var(--pos-accent)]/20 text-[var(--pos-accent)]"

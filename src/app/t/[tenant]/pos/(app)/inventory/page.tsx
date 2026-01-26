@@ -42,7 +42,7 @@ export default async function TenantInventoryPage({ params }: { params: { tenant
           reserved,
           reorderPoint,
           warehouses: p.stockItems.map((s) => ({
-            warehouseName: s.warehouse.name,
+            warehouseName: s.warehouse?.name ?? "Unknown",
             onHand: s.onHand,
             reserved: s.reserved,
             reorderPoint: s.reorderPoint,

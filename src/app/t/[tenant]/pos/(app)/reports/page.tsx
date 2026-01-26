@@ -228,7 +228,7 @@ export default function ReportsPage() {
                           }}
                         />
                         <div className="text-[10px] text-[var(--pos-muted)] truncate w-full text-center">
-                          {t.period.split(" ")[1] || t.period.split("-").slice(-1)[0]}
+                          {t.period?.split(" ")[1] || t.period?.split("-").slice(-1)[0] || "—"}
                         </div>
                       </div>
                     );

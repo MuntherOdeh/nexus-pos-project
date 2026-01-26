@@ -572,8 +572,8 @@ export default function EmployeesPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full bg-[var(--pos-accent)]/20 flex items-center justify-center text-lg font-bold text-[var(--pos-accent)]">
-                      {employee.firstName[0]}
-                      {employee.lastName[0]}
+                      {employee.firstName?.[0] ?? ""}
+                      {employee.lastName?.[0] ?? ""}
                     </div>
                     <div>
                       <h3 className="font-semibold">
@@ -709,11 +709,11 @@ export default function EmployeesPage() {
                         <td className="py-3 pr-4">
                           <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-full bg-[var(--pos-accent)]/20 flex items-center justify-center text-xs font-bold text-[var(--pos-accent)]">
-                              {entry.employee.firstName[0]}
-                              {entry.employee.lastName[0]}
+                              {entry.employee?.firstName?.[0] ?? ""}
+                              {entry.employee?.lastName?.[0] ?? ""}
                             </div>
                             <span>
-                              {entry.employee.firstName} {entry.employee.lastName}
+                              {entry.employee?.firstName ?? ""} {entry.employee?.lastName ?? ""}
                             </span>
                           </div>
                         </td>

@@ -433,9 +433,9 @@ export default function StockPage() {
                     }`}
                   />
                   <div>
-                    <h4 className="font-semibold">{alert.product.name}</h4>
+                    <h4 className="font-semibold">{alert.product?.name ?? "Unknown Product"}</h4>
                     <p className="text-sm text-[var(--pos-muted)]">
-                      {alert.warehouse.name} • SKU: {alert.product.sku || "N/A"}
+                      {alert.warehouse?.name ?? "Unknown"} • SKU: {alert.product?.sku || "N/A"}
                     </p>
                   </div>
                 </div>

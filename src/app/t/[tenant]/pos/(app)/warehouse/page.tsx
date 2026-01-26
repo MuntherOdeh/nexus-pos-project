@@ -42,7 +42,7 @@ export default async function TenantWarehousePage({ params }: { params: { tenant
           const totalOnHand = w.stockItems.reduce((sum, s) => sum + s.onHand, 0);
           const totalReserved = w.stockItems.reduce((sum, s) => sum + s.reserved, 0);
           const inventoryValueCents = w.stockItems.reduce(
-            (sum, s) => sum + s.onHand * (s.product.priceCents || 0),
+            (sum, s) => sum + s.onHand * (s.product?.priceCents ?? 0),
             0
           );
           const lowStock = w.stockItems.filter((s) => s.reorderPoint > 0 && s.onHand <= s.reorderPoint).length;
@@ -95,12 +95,12 @@ export default async function TenantWarehousePage({ params }: { params: { tenant
                     <tbody>
                       {w.stockItems.map((s) => (
                         <tr key={`${w.id}-${s.id}`} className="border-t border-[color:var(--pos-border)]">
-                          <td className="py-3 pr-4 font-semibold">{s.product.name}</td>
-                          <td className="py-3 pr-4 font-mono text-xs text-[var(--pos-muted)]">{s.product.sku || "—"}</td>
+                          <td className="py-3 pr-4 font-semibold">{s.product?.name ?? "Unknown"}</td>
+                          <td className="py-3 pr-4 font-mono text-xs text-[var(--pos-muted)]">{s.product?.sku || "—"}</td>
                           <td className="py-3 pr-4">{s.onHand}</td>
                           <td className="py-3 pr-4">{s.reserved}</td>
                           <td className="py-3 text-right font-semibold">
-                            {formatMoney({ cents: s.product.priceCents, currency: s.product.currency })}
+                            {formatMoney({ cents: s.product?.priceCents ?? 0, currency: s.product?.currency ?? "USD" })}
                           </td>
                         </tr>
                       ))}

@@ -176,7 +176,7 @@ export default async function TenantDashboardPage({ params }: { params: { tenant
     if (order.closedAt) {
       const orderDay = startOfDay(order.closedAt).getTime();
       const bucket = dayBuckets.find((b) => b.day.getTime() === orderDay);
-      if (bucket) bucket.cents += order.totalCents;
+      if (bucket) bucket.cents += order.totalCents ?? 0;
     }
   }
 
@@ -367,16 +367,16 @@ export default async function TenantDashboardPage({ params }: { params: { tenant
                 <tbody>
                   {recentOrders.map((order) => (
                     <tr key={order.id} className="border-t border-[color:var(--pos-border)]">
-                      <td className="py-3 pr-4 font-mono text-xs">{order.orderNumber.slice(-10)}</td>
+                      <td className="py-3 pr-4 font-mono text-xs">{order.orderNumber?.slice(-10) ?? "—"}</td>
                       <td className="py-3 pr-4">{order.table?.name || "Quick Sale"}</td>
-                      <td className="py-3 pr-4">{order._count.items}</td>
+                      <td className="py-3 pr-4">{order._count?.items ?? 0}</td>
                       <td className="py-3 pr-4">
                         <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${getOrderStatusColor(order.status)}`}>
                           {formatOrderStatus(order.status)}
                         </span>
                       </td>
                       <td className="py-3 text-right font-semibold">
-                        {formatMoney({ cents: order.totalCents, currency: order.currency })}
+                        {formatMoney({ cents: order.totalCents ?? 0, currency: order.currency })}
                       </td>
                     </tr>
                   ))}
